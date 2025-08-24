@@ -1,0 +1,17 @@
+# Notion API Integration
+# Get your integration token from https://www.notion.so/my-integrations
+NOTION_API_KEY=your_notion_integration_token_here
+
+# AI Models (Optional - defaults are set in wrangler.jsonc)
+# DEFAULT_EMBEDDING_MODEL=@cf/baai/bge-base-en-v1.5
+# DEFAULT_TEXT_GENERATION_MODEL=@cf/google/gemma-3-12b-it
+
+# Image Analysis Settings (Optional)
+# IMAGE_ANALYSIS_PROMPT=Describe this image in detail. Include any text visible in the image.
+# IMAGE_ANALYSIS_MAX_TOKENS=512
+
+# Text Extraction Settings (Optional)
+# TEXT_EXTRACTION_MAX_TOKENS=1024
+
+# Development Environment (Optional)
+# ENVIRONMENT=development

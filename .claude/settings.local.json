@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(yarn typecheck)",
+      "Bash(yarn build)",
+      "Bash(wrangler types:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(yarn test)",
+      "Bash(yarn test:*)",
+      "Bash(yarn vitest run:*)",
+      "Bash(ls:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "Bash(npx vitest run:*)",
+      "WebFetch(domain:)"
+    ],
+    "deny": []
+  }
+}
