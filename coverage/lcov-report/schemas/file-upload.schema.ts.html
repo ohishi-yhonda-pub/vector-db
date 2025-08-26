@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
@@ -37,16 +37,16 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/5</span>
+                <span class='fraction'>5/5</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -116,23 +116,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">4x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -145,7 +142,10 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -165,12 +165,12 @@
 import { VectorMetadataSchema } from './vector.schema'
 &nbsp;
 // サポートするファイルタイプ
-export const SupportedFileTypes = <span class="cstat-no" title="statement not covered" >z.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'])</span>
+export const SupportedFileTypes = z.enum(['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp'])
 &nbsp;
 // ファイルアップロードのフォームデータスキーマ
-export const FileUploadSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const FileUploadSchema = z.object({
   file: z.instanceof(File).refine(
-<span class="fstat-no" title="function not covered" >    (f</span>ile) =&gt; <span class="cstat-no" title="statement not covered" >file.size &lt;= 10 * 1024 * 1024, // 10MB max</span>
+    (file) =&gt; file.size &lt;= 10 * 1024 * 1024, // 10MB max
     { message: 'ファイルサイズは10MB以下にしてください' }
   ),
   namespace: z.string().optional(),
@@ -178,7 +178,7 @@ export const FileUploadSchema = <span class="cstat-no" title="statement not cove
 })
 &nbsp;
 // ファイル処理レスポンススキーマ
-export const FileProcessingResponseSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const FileProcessingResponseSchema = z.object({
   success: z.boolean(),
   data: z.object({
     jobId: z.string(),
@@ -194,7 +194,7 @@ export const FileProcessingResponseSchema = <span class="cstat-no" title="statem
 })
 &nbsp;
 // ファイル処理結果スキーマ
-export const FileProcessingResultSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const FileProcessingResultSchema = z.object({
   type: z.enum(['pdf', 'image']),
   success: z.boolean(),
   content: z.object({
@@ -217,7 +217,7 @@ export type FileProcessingResult = z.infer&lt;typeof FileProcessingResultSchema&
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T11:15:05.861Z
+                at 2025-08-26T11:40:07.547Z
             </div>
         <script src="../prettify.js"></script>
         <script>

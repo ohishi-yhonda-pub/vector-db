@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>0/6</span>
+                <span class='fraction'>6/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>0/1</span>
+                <span class='fraction'>1/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/11</span>
+                <span class='fraction'>11/11</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -161,7 +161,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -201,29 +201,29 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-yes">5x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -244,7 +244,7 @@ type EnvType = {
 }
 &nbsp;
 // ベクトル取得ルート定義
-export const getVectorRoute = <span class="cstat-no" title="statement not covered" >createRoute({</span>
+export const getVectorRoute = createRoute({
   method: 'get',
   path: '/vectors/{id}',
   request: {
@@ -284,29 +284,29 @@ export const getVectorRoute = <span class="cstat-no" title="statement not covere
 })
 &nbsp;
 // ベクトル取得ハンドラー
-export const getVectorHandler: RouteHandler&lt;typeof getVectorRoute, EnvType&gt; = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async (c</span>) =&gt; {</span>
-<span class="cstat-no" title="statement not covered" >  try {</span>
-    const { id } = <span class="cstat-no" title="statement not covered" >c.req.valid('param')</span>
+export const getVectorHandler: RouteHandler&lt;typeof getVectorRoute, EnvType&gt; = async (c) =&gt; {
+  try {
+    const { id } = c.req.valid('param')
     
-    const vectorizeService = <span class="cstat-no" title="statement not covered" >new VectorizeService(c.env)</span>
-    const vectors = <span class="cstat-no" title="statement not covered" >await vectorizeService.getByIds([id])</span>
+    const vectorizeService = new VectorizeService(c.env)
+    const vectors = await vectorizeService.getByIds([id])
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!vectors || vectors.length === 0) {</span>
-<span class="cstat-no" title="statement not covered" >      return c.json&lt;ErrorResponse, 404&gt;({</span>
+    if (!vectors || vectors.length === 0) {
+      return c.json&lt;ErrorResponse, 404&gt;({
         success: false,
         error: 'Not Found',
         message: `ベクトル ${id} が見つかりません`
       }, 404)
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    return c.json&lt;VectorResponse, 200&gt;({</span>
+    return c.json&lt;VectorResponse, 200&gt;({
       success: true,
       data: vectors[0],
       message: 'ベクトルが見つかりました'
     }, 200)
   } catch (error) {
-<span class="cstat-no" title="statement not covered" >    console.error('Get vector error:', error)</span>
-<span class="cstat-no" title="statement not covered" >    return c.json&lt;ErrorResponse, 500&gt;({</span>
+    console.error('Get vector error:', error)
+    return c.json&lt;ErrorResponse, 500&gt;({
       success: false,
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'ベクトル取得中にエラーが発生しました'
@@ -319,7 +319,7 @@ export const getVectorHandler: RouteHandler&lt;typeof getVectorRoute, EnvType&gt
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T11:15:05.810Z
+                at 2025-08-26T11:40:07.498Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

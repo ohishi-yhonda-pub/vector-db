@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">0% </span>
+                <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>0/8</span>
+                <span class='fraction'>8/8</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line high'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -170,14 +170,14 @@
 <a name='L105'></a><a href='#L105'>105</a>
 <a name='L106'></a><a href='#L106'>106</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -198,7 +198,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -216,27 +216,27 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -247,7 +247,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -275,14 +275,14 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { z } from '@hono/zod-openapi'
 &nbsp;
-export const VectorMetadataSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const VectorMetadataSchema = z.object({
   title: z.string().optional(),
   content: z.string().optional(),
   url: z.string().url().optional(),
   timestamp: z.string().datetime().optional(),
 }).passthrough()
 &nbsp;
-export const VectorSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const VectorSchema = z.object({
   id: z.string().min(1).openapi({
     example: 'vec_123456',
     description: 'ベクトルの一意識別子'
@@ -303,7 +303,7 @@ export const VectorSchema = <span class="cstat-no" title="statement not covered"
   })
 })
 &nbsp;
-export const CreateVectorSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const CreateVectorSchema = z.object({
   text: z.string().min(1).openapi({
     example: 'これはサンプルテキストです',
     description: 'ベクトル化するテキスト'
@@ -321,27 +321,27 @@ export const CreateVectorSchema = <span class="cstat-no" title="statement not co
   })
 })
 &nbsp;
-export const VectorResponseSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const VectorResponseSchema = z.object({
   success: z.boolean(),
   data: VectorSchema,
   message: z.string().optional()
 })
 &nbsp;
-export const VectorListResponseSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const VectorListResponseSchema = z.object({
   success: z.boolean(),
   data: z.array(VectorSchema),
   count: z.number(),
   message: z.string().optional()
 })
 &nbsp;
-export const DeleteVectorResponseSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const DeleteVectorResponseSchema = z.object({
   success: z.boolean(),
   deletedCount: z.number(),
   message: z.string().optional()
 })
 &nbsp;
 // 非同期操作レスポンススキーマ
-export const AsyncVectorOperationResponseSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const AsyncVectorOperationResponseSchema = z.object({
   success: z.boolean(),
   data: z.object({
     jobId: z.string(),
@@ -352,7 +352,7 @@ export const AsyncVectorOperationResponseSchema = <span class="cstat-no" title="
 })
 &nbsp;
 // ジョブスキーマ
-export const VectorJobSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
+export const VectorJobSchema = z.object({
   id: z.string(),
   type: z.enum(['create', 'delete']),
   status: z.enum(['pending', 'processing', 'completed', 'failed']),
@@ -385,7 +385,7 @@ export type VectorJob = z.infer&lt;typeof VectorJobSchema&gt;</pre></td></tr></t
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T11:15:05.810Z
+                at 2025-08-26T11:40:07.498Z
             </div>
         <script src="../prettify.js"></script>
         <script>
