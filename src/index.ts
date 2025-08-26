@@ -38,7 +38,7 @@ app.get("/", (c) => {
 })
 
 // OpenAPIドキュメント設定
-app.doc('/doc', {
+app.doc('/specification', {
   openapi: '3.0.0',
   info: {
     version: '1.0.0',
@@ -54,7 +54,7 @@ app.doc('/doc', {
 })
 
 // Swagger UI
-app.get('/ui', swaggerUI({ url: '/doc' }))
+app.get('/doc', swaggerUI({ url: '/specification' }))
 
 // APIルートの登録
 const api = new OpenAPIHono<{ Bindings: Env }>()

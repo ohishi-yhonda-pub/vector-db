@@ -2,6 +2,7 @@
   "name": "vector-db",
   "main": "src/index.ts",
   "compatibility_date": "2024-12-18",
+  "compatibility_flags": ["nodejs_compat"],
   // Vectorize設定
   "vectorize": [
     {
@@ -85,6 +86,7 @@
   // ローカル開発設定
   "dev": {
     "port": 8787,
-    "local_protocol": "http"
+    "local_protocol": "http",
+    "host": "localhost"
   }
 }
