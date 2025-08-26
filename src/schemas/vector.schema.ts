@@ -76,6 +76,26 @@ export const AsyncVectorOperationResponseSchema = z.object({
   })
 })
 
+// ジョブスキーマ
+export const VectorJobSchema = z.object({
+  id: z.string(),
+  type: z.enum(['create', 'delete']),
+  status: z.enum(['pending', 'processing', 'completed', 'failed']),
+  createdAt: z.string(),
+  completedAt: z.string().optional(),
+  failedAt: z.string().optional(),
+  error: z.string().optional(),
+  // create job fields
+  text: z.string().optional(),
+  model: z.string().optional(),
+  namespace: z.string().optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
+  vectorId: z.string().optional(),
+  // delete job fields
+  vectorIds: z.array(z.string()).optional(),
+  deletedCount: z.number().optional()
+})
+
 export type Vector = z.infer<typeof VectorSchema>
 export type CreateVector = z.infer<typeof CreateVectorSchema>
 export type VectorResponse = z.infer<typeof VectorResponseSchema>
@@ -83,3 +103,4 @@ export type VectorListResponse = z.infer<typeof VectorListResponseSchema>
 export type DeleteVectorResponse = z.infer<typeof DeleteVectorResponseSchema>
 export type VectorMetadata = z.infer<typeof VectorMetadataSchema>
 export type AsyncVectorOperationResponse = z.infer<typeof AsyncVectorOperationResponseSchema>
+export type VectorJob = z.infer<typeof VectorJobSchema>
