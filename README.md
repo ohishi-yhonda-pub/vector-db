@@ -52,6 +52,43 @@ Cloudflare Workers上で動作する、VectorizeとWorkers AIを活用したベ�
 - バルク同期による効率的な処理
 - NotionManagerによる状態管理と同期ジョブ追跡
 
+## Embeddings と Vectors の概念
+
+### 処理フロー
+1. **テキスト入力** → 2. **Embeddings生成** → 3. **Vectors保存/検索**
+
+### Embeddings（埋め込み）
+- **定義**: テキストや画像などの非構造化データを、機械が理解できる数値ベクトルに変換する処理
+- **実装**: Workers AIのEmbeddingモデル（`@cf/baai/bge-base-en-v1.5`など）を使用
+- **出力**: 固定次元の浮動小数点配列（例: 768次元のfloat32配列）
+- **用途**: セマンティック（意味的）な類似性を数値化
+
+### Vectors（ベクトル）
+- **定義**: Embeddingsによって生成された数値配列データとその管理システム
+- **保存先**: Cloudflare Vectorizeインデックス
+- **機能**: 
+  - ベクトル間の類似度計算（コサイン類似度など）
+  - 高速な最近傍探索
+  - メタデータとの関連付け
+- **用途**: 類似コンテンツ検索、レコメンデーション、クラスタリング
+
+### このプロジェクトでの実装
+```
+入力テキスト/画像
+    ↓
+AIEmbeddings (Durable Object)
+    ├─ Workers AIモデル呼び出し
+    └─ 埋め込みベクトル生成（768次元）
+    ↓
+VectorManager (Durable Object)
+    ├─ ベクトルの前処理
+    └─ メタデータ付与
+    ↓
+Vectorize Index
+    ├─ ベクトル保存
+    └─ 類似度検索の実行
+```
+
 ## アーキテクチャ
 
 ### Agents (Durable Objects)

@@ -25,7 +25,17 @@ describe('FileProcessingWorkflow', () => {
         run: vi.fn()
       },
       DEFAULT_TEXT_GENERATION_MODEL: '@cf/meta/llama-3-8b-instruct',
+      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
       TEXT_EXTRACTION_MAX_TOKENS: '2048',
+      EMBEDDINGS_WORKFLOW: {
+        create: vi.fn().mockImplementation(async ({ params }) => ({
+          get: vi.fn().mockResolvedValue({
+            success: true,
+            embedding: [0.1, 0.2, 0.3],
+            model: '@cf/baai/bge-base-en-v1.5'
+          })
+        }))
+      },
       VECTOR_OPERATIONS_WORKFLOW: {
         create: vi.fn().mockResolvedValue({ id: 'workflow-123' })
       }
@@ -583,6 +593,69 @@ KEYWORDS: test`
         success: false,
         error: 'Image processing error'
       })
+    })
+
+    it('should handle embedding generation failure and skip chunk', async () => {
+      const params = {
+        fileData: btoa('PDF content'),
+        fileName: 'test.pdf',
+        fileType: 'application/pdf',
+        fileSize: 1024
+      }
+
+      // Mock to return embedding failure for first chunk, success for second
+      let callCount = 0
+      mockEnv.EMBEDDINGS_WORKFLOW.create.mockImplementation(async ({ params }) => ({
+        get: vi.fn().mockResolvedValue(
+          callCount++ === 0 
+            ? { success: false, error: 'Embedding generation failed' }
+            : { success: true, embedding: [0.1, 0.2, 0.3], model: '@cf/baai/bge-base-en-v1.5' }
+        )
+      }))
+
+      mockStep.do
+        .mockImplementationOnce(async (name: string, fn: () => any) => {
+          if (name === 'analyze-file-with-gemma') {
+            return {
+              description: 'Test PDF',
+              extractedText: 'Content',
+              topics: 'test',
+              keywords: 'pdf',
+              hasText: true
+            }
+          }
+          return fn()
+        })
+        .mockImplementationOnce(async (name: string, fn: () => any) => {
+          if (name === 'prepare-content-chunks') {
+            return await fn()
+          }
+          return fn()
+        })
+        .mockImplementationOnce(async (name: string, fn: () => any) => {
+          if (name === 'vectorize-content') {
+            // Execute the callback to trigger the embedding workflow
+            return await fn()
+          }
+          return fn()
+        })
+
+      mockEnv.AI.run.mockResolvedValueOnce({
+        response: 'DESCRIPTION: Test PDF\nEXTRACTED_TEXT: Content\nTOPICS: test\nKEYWORDS: pdf'
+      })
+
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      const result = await (workflow as any).processFile(params, mockStep)
+
+      expect(result.success).toBe(true)
+      // Should have skipped first chunk due to embedding failure
+      expect(result.vectorIds).toHaveLength(2) // Only description and metadata chunks
+      expect(consoleSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to generate embedding for chunk 0: Embedding generation failed')
+      )
+
+      consoleSpy.mockRestore()
     })
   })
 

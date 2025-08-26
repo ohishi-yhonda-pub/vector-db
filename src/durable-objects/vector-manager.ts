@@ -169,15 +169,34 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
   ): Promise<{ jobId: string; workflowId: string; status: string }> {
     const jobId = `vec_create_${Date.now()}`
     
-    // Workflowを作成
+    // Step 1: Generate embedding using EmbeddingsWorkflow
+    const embeddingWorkflow = await this.env.EMBEDDINGS_WORKFLOW.create({
+      id: `embed_${jobId}`,
+      params: {
+        text,
+        model: model || this.env.DEFAULT_EMBEDDING_MODEL
+      }
+    })
+    
+    // Wait for embedding to complete
+    const embeddingResult = await embeddingWorkflow.get()
+    
+    if (!embeddingResult.success || !embeddingResult.embedding) {
+      throw new Error(`Failed to generate embedding: ${embeddingResult.error || 'Unknown error'}`)
+    }
+    
+    // Step 2: Save vector using VectorOperationsWorkflow
     const workflow = await this.env.VECTOR_OPERATIONS_WORKFLOW.create({
       id: jobId,
       params: {
         type: 'create',
-        text,
-        model,
+        embedding: embeddingResult.embedding,
         namespace,
-        metadata
+        metadata: {
+          ...metadata,
+          text,
+          model: embeddingResult.model
+        }
       }
     })
     

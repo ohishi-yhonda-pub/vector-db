@@ -45,6 +45,11 @@
   // Workflows設定
   "workflows": [
     {
+      "binding": "EMBEDDINGS_WORKFLOW",
+      "name": "embeddings-workflow",
+      "class_name": "EmbeddingsWorkflow"
+    },
+    {
       "binding": "BATCH_EMBEDDINGS_WORKFLOW",
       "name": "batch-embeddings-workflow",
       "class_name": "BatchEmbeddingsWorkflow"
