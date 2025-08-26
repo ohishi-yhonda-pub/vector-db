@@ -1,14 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { OpenAPIHono } from '@hono/zod-openapi'
 
-// Import all route index modules
-import embeddingsRoutes from '../../../src/routes/api/embeddings/index'
-import searchRoutes from '../../../src/routes/api/search/index'
-import vectorsRoutes from '../../../src/routes/api/vectors/index'
-import filesRoutes from '../../../src/routes/api/files/index'
-import notionRoutes from '../../../src/routes/api/notion/index'
-
-// Mock all individual route modules
+// Mock all individual route modules before importing index modules
 vi.mock('../../../src/routes/api/embeddings/generate', () => ({
   generateEmbeddingRoute: { method: 'post', path: '/embeddings/generate' },
   generateEmbeddingHandler: vi.fn()
@@ -64,6 +57,13 @@ vi.mock('../../../src/routes/api/vectors/delete', () => ({
   deleteVectorHandler: vi.fn()
 }))
 
+vi.mock('../../../src/routes/api/vectors/status', () => ({
+  getJobStatusRoute: { method: 'get', path: '/vectors/jobs/{jobId}' },
+  getJobStatusHandler: vi.fn(),
+  getAllJobsRoute: { method: 'get', path: '/vectors/jobs' },
+  getAllJobsHandler: vi.fn()
+}))
+
 vi.mock('../../../src/routes/api/files/upload', () => ({
   uploadFileRoute: { method: 'post', path: '/files/upload' },
   uploadFileHandler: vi.fn()
@@ -98,6 +98,13 @@ vi.mock('../../../src/routes/api/notion/bulk-sync', () => ({
   bulkSyncNotionPagesRoute: { method: 'post', path: '/notion/pages/bulk-sync' },
   bulkSyncNotionPagesHandler: vi.fn()
 }))
+
+// Import all route index modules AFTER mocks are set up
+import embeddingsRoutes from '../../../src/routes/api/embeddings/index'
+import searchRoutes from '../../../src/routes/api/search/index'
+import vectorsRoutes from '../../../src/routes/api/vectors/index'
+import filesRoutes from '../../../src/routes/api/files/index'
+import notionRoutes from '../../../src/routes/api/notion/index'
 
 describe('Route Index Files', () => {
   let app: OpenAPIHono<{ Bindings: Env }>
@@ -157,7 +164,7 @@ describe('Route Index Files', () => {
     it('should register all vectors routes', () => {
       vectorsRoutes(app)
 
-      expect(mockOpenapi).toHaveBeenCalledTimes(4)
+      expect(mockOpenapi).toHaveBeenCalledTimes(6)
       expect(mockOpenapi).toHaveBeenNthCalledWith(1,
         expect.objectContaining({ method: 'post', path: '/vectors' }),
         expect.any(Function)
@@ -172,6 +179,14 @@ describe('Route Index Files', () => {
       )
       expect(mockOpenapi).toHaveBeenNthCalledWith(4,
         expect.objectContaining({ method: 'delete', path: '/vectors/{id}' }),
+        expect.any(Function)
+      )
+      expect(mockOpenapi).toHaveBeenNthCalledWith(5,
+        expect.objectContaining({ method: 'get', path: '/vectors/jobs/{jobId}' }),
+        expect.any(Function)
+      )
+      expect(mockOpenapi).toHaveBeenNthCalledWith(6,
+        expect.objectContaining({ method: 'get', path: '/vectors/jobs' }),
         expect.any(Function)
       )
     })
@@ -229,7 +244,7 @@ describe('Route Index Files', () => {
       filesRoutes(app)
       notionRoutes(app)
 
-      expect(mockOpenapi).toHaveBeenCalledTimes(18) // 4+3+4+2+5 = 18 total routes
+      expect(mockOpenapi).toHaveBeenCalledTimes(20) // 4+3+6+2+5 = 20 total routes
     })
 
     it('should return the app instance for chaining', () => {

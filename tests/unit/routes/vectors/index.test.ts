@@ -23,6 +23,13 @@ vi.mock('../../../../src/routes/api/vectors/delete', () => ({
   deleteVectorHandler: vi.fn()
 }))
 
+vi.mock('../../../../src/routes/api/vectors/status', () => ({
+  getJobStatusRoute: { path: '/vectors/jobs/:jobId' },
+  getJobStatusHandler: vi.fn(),
+  getAllJobsRoute: { path: '/vectors/jobs' },
+  getAllJobsHandler: vi.fn()
+}))
+
 describe('Vectors Routes Index', () => {
   let app: OpenAPIHono<{ Bindings: Env }>
 
@@ -35,7 +42,7 @@ describe('Vectors Routes Index', () => {
   it('should register all vectors routes', () => {
     vectorsRoutes(app)
 
-    expect(app.openapi).toHaveBeenCalledTimes(4)
+    expect(app.openapi).toHaveBeenCalledTimes(6)
     
     // Check each route was registered
     expect(app.openapi).toHaveBeenCalledWith(
@@ -45,6 +52,16 @@ describe('Vectors Routes Index', () => {
     
     expect(app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/vectors/:id' }),
+      expect.any(Function)
+    )
+    
+    expect(app.openapi).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '/vectors/jobs/:jobId' }),
+      expect.any(Function)
+    )
+    
+    expect(app.openapi).toHaveBeenCalledWith(
+      expect.objectContaining({ path: '/vectors/jobs' }),
       expect.any(Function)
     )
   })

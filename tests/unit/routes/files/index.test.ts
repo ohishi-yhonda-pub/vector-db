@@ -4,12 +4,12 @@ import filesRoutes from '../../../../src/routes/api/files/index'
 
 // Mock all route handlers
 vi.mock('../../../../src/routes/api/files/upload', () => ({
-  uploadFileRoute: { path: '/files/upload' },
+  uploadFileRoute: { method: 'post', path: '/files/upload' },
   uploadFileHandler: vi.fn()
 }))
 
 vi.mock('../../../../src/routes/api/files/status', () => ({
-  fileStatusRoute: { path: '/files/status' },
+  fileStatusRoute: { method: 'get', path: '/files/{fileId}/status' },
   fileStatusHandler: vi.fn()
 }))
 
@@ -34,7 +34,7 @@ describe('Files Routes Index', () => {
     )
     
     expect(app.openapi).toHaveBeenCalledWith(
-      expect.objectContaining({ path: '/files/status' }),
+      expect.objectContaining({ path: '/files/{fileId}/status' }),
       expect.any(Function)
     )
   })
