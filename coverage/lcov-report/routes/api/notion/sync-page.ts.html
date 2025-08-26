@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>4/4</span>
+                <span class='fraction'>0/4</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -174,7 +174,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -221,15 +221,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">7x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -237,16 +237,16 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -256,8 +256,8 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -274,7 +274,7 @@ type EnvType = {
 }
 &nbsp;
 // ページ同期ルート定義
-export const syncNotionPageRoute = createRoute({
+export const syncNotionPageRoute = <span class="cstat-no" title="statement not covered" >createRoute({</span>
   method: 'post',
   path: '/notion/pages/{pageId}/sync',
   request: {
@@ -321,15 +321,15 @@ export const syncNotionPageRoute = createRoute({
 })
 &nbsp;
 // ページ同期ハンドラー
-export const syncNotionPageHandler: RouteHandler&lt;typeof syncNotionPageRoute, EnvType&gt; = async (c) =&gt; {
-  try {
-    const { pageId } = c.req.valid('param')
-    const body = c.req.valid('json')
+export const syncNotionPageHandler: RouteHandler&lt;typeof syncNotionPageRoute, EnvType&gt; = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async (c</span>) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const { pageId } = <span class="cstat-no" title="statement not covered" >c.req.valid('param')</span>
+    const body = <span class="cstat-no" title="statement not covered" >c.req.valid('json')</span>
     
     // Notion APIトークンを取得
-    const notionToken = c.env.NOTION_API_KEY
-    if (!notionToken) {
-      return c.json&lt;ErrorResponse, 401&gt;({
+    const notionToken = <span class="cstat-no" title="statement not covered" >c.env.NOTION_API_KEY</span>
+<span class="cstat-no" title="statement not covered" >    if (!notionToken) {</span>
+<span class="cstat-no" title="statement not covered" >      return c.json&lt;ErrorResponse, 401&gt;({</span>
         success: false,
         error: 'Unauthorized',
         message: 'Notion APIトークンが設定されていません'
@@ -337,16 +337,16 @@ export const syncNotionPageHandler: RouteHandler&lt;typeof syncNotionPageRoute, 
     }
 &nbsp;
     // NotionManagerを使用して同期ジョブを作成
-    const notionManagerId = c.env.NOTION_MANAGER.idFromName('global')
-    const notionManager = c.env.NOTION_MANAGER.get(notionManagerId)
+    const notionManagerId = <span class="cstat-no" title="statement not covered" >c.env.NOTION_MANAGER.idFromName('global')</span>
+    const notionManager = <span class="cstat-no" title="statement not covered" >c.env.NOTION_MANAGER.get(notionManagerId)</span>
     
-    const result = await notionManager.createSyncJob(pageId, {
+    const result = <span class="cstat-no" title="statement not covered" >await notionManager.createSyncJob(pageId, {</span>
       includeBlocks: body.includeBlocks,
       includeProperties: body.includeProperties,
       namespace: body.namespace
     })
 &nbsp;
-    return c.json({
+<span class="cstat-no" title="statement not covered" >    return c.json({</span>
       success: true,
       data: {
         jobId: result.jobId,
@@ -356,8 +356,8 @@ export const syncNotionPageHandler: RouteHandler&lt;typeof syncNotionPageRoute, 
       }
     }, 202)
   } catch (error) {
-    console.error('Sync page error:', error)
-    return c.json&lt;ErrorResponse, 500&gt;({
+<span class="cstat-no" title="statement not covered" >    console.error('Sync page error:', error)</span>
+<span class="cstat-no" title="statement not covered" >    return c.json&lt;ErrorResponse, 500&gt;({</span>
       success: false,
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : '同期処理の開始中にエラーが発生しました'
@@ -370,7 +370,7 @@ export const syncNotionPageHandler: RouteHandler&lt;typeof syncNotionPageRoute, 
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T10:36:12.067Z
+                at 2025-08-26T10:55:40.685Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>6/6</span>
+                <span class='fraction'>0/6</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>14/14</span>
+                <span class='fraction'>0/14</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -194,7 +194,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -248,15 +248,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -266,12 +266,12 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -283,17 +283,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -312,7 +312,7 @@ type EnvType = {
 }
 &nbsp;
 // 類似検索ルート定義
-export const similarSearchRoute = createRoute({
+export const similarSearchRoute = <span class="cstat-no" title="statement not covered" >createRoute({</span>
   method: 'post',
   path: '/search/similar',
   request: {
@@ -366,15 +366,15 @@ export const similarSearchRoute = createRoute({
 })
 &nbsp;
 // 類似検索ハンドラー
-export const similarSearchHandler: RouteHandler&lt;typeof similarSearchRoute, EnvType&gt; = async (c) =&gt; {
-  try {
-    const startTime = Date.now()
-    const body = c.req.valid('json')
+export const similarSearchHandler: RouteHandler&lt;typeof similarSearchRoute, EnvType&gt; = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async (c</span>) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const startTime = <span class="cstat-no" title="statement not covered" >Date.now()</span>
+    const body = <span class="cstat-no" title="statement not covered" >c.req.valid('json')</span>
     
-    const vectorizeService = new VectorizeService(c.env)
+    const vectorizeService = <span class="cstat-no" title="statement not covered" >new VectorizeService(c.env)</span>
     
     // 類似検索を実行
-    const searchResults = await vectorizeService.findSimilar(
+    const searchResults = <span class="cstat-no" title="statement not covered" >await vectorizeService.findSimilar(</span>
       body.vectorId,
       {
         topK: body.topK,
@@ -384,12 +384,12 @@ export const similarSearchHandler: RouteHandler&lt;typeof similarSearchRoute, En
       }
     )
     
-    const processingTime = Date.now() - startTime
+    const processingTime = <span class="cstat-no" title="statement not covered" >Date.now() - startTime</span>
     
-    return c.json&lt;SearchResponse, 200&gt;({
+<span class="cstat-no" title="statement not covered" >    return c.json&lt;SearchResponse, 200&gt;({</span>
       success: true,
       data: {
-        matches: searchResults.matches.map((match: VectorizeMatch) =&gt; ({
+        matches: searchResults.matches.map(<span class="fstat-no" title="function not covered" >(m</span>atch: VectorizeMatch) =&gt; (<span class="cstat-no" title="statement not covered" >{</span>
           id: match.id,
           score: match.score,
           metadata: match.metadata
@@ -401,17 +401,17 @@ export const similarSearchHandler: RouteHandler&lt;typeof similarSearchRoute, En
       message: `${searchResults.matches.length}件の類似ベクトルが見つかりました`
     }, 200)
   } catch (error) {
-    console.error('Similar search error:', error)
+<span class="cstat-no" title="statement not covered" >    console.error('Similar search error:', error)</span>
     
-    if (error instanceof Error &amp;&amp; error.message.includes('not found')) {
-      return c.json&lt;ErrorResponse, 404&gt;({
+<span class="cstat-no" title="statement not covered" >    if (error instanceof Error &amp;&amp; error.message.includes('not found')) {</span>
+<span class="cstat-no" title="statement not covered" >      return c.json&lt;ErrorResponse, 404&gt;({</span>
         success: false,
         error: 'Not Found',
         message: error.message
       }, 404)
     }
     
-    return c.json&lt;ErrorResponse, 500&gt;({
+<span class="cstat-no" title="statement not covered" >    return c.json&lt;ErrorResponse, 500&gt;({</span>
       success: false,
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : '類似検索中にエラーが発生しました'
@@ -424,7 +424,7 @@ export const similarSearchHandler: RouteHandler&lt;typeof similarSearchRoute, En
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T10:36:12.067Z
+                at 2025-08-26T10:55:40.685Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

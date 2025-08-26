@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>12/12</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>12/12</span>
+                <span class='fraction'>0/12</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -175,19 +175,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -229,19 +227,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">1x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -263,13 +263,13 @@ type EnvType = {
 }
 &nbsp;
 // 埋め込み生成ロジック
-export async function generateEmbedding(
+export async function <span class="fstat-no" title="function not covered" >generateEmbedding(</span>
   params: GenerateEmbedding,
   aiEmbeddings: DurableObjectStub&lt;AIEmbeddings&gt;
 ): Promise&lt;GenerateEmbeddingResponse&gt; {
-  const result = await aiEmbeddings.generateEmbedding(params.text, params.model)
+  const result = <span class="cstat-no" title="statement not covered" >await aiEmbeddings.generateEmbedding(params.text, params.model)</span>
   
-  return {
+<span class="cstat-no" title="statement not covered" >  return {</span>
     success: true,
     data: result,
     message: 'テキストの処理を開始しました'
@@ -277,7 +277,7 @@ export async function generateEmbedding(
 }
 &nbsp;
 // 埋め込み生成ルート
-export const generateEmbeddingRoute = createRoute({
+export const generateEmbeddingRoute = <span class="cstat-no" title="statement not covered" >createRoute({</span>
   method: 'post',
   path: '/embeddings',
   request: {
@@ -321,19 +321,19 @@ export const generateEmbeddingRoute = createRoute({
 })
 &nbsp;
 // 埋め込み生成ハンドラー
-export const generateEmbeddingHandler: RouteHandler&lt;typeof generateEmbeddingRoute, EnvType&gt; = async (c) =&gt; {
-  try {
-    const body = c.req.valid('json')
+export const generateEmbeddingHandler: RouteHandler&lt;typeof generateEmbeddingRoute, EnvType&gt; = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async (c</span>) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const body = <span class="cstat-no" title="statement not covered" >c.req.valid('json')</span>
 &nbsp;
     // Durable Objectを使用
-    const aiEmbeddingsId = c.env.AI_EMBEDDINGS.idFromName('default')
-    const aiEmbeddings = c.env.AI_EMBEDDINGS.get(aiEmbeddingsId)
+    const aiEmbeddingsId = <span class="cstat-no" title="statement not covered" >c.env.AI_EMBEDDINGS.idFromName('default')</span>
+    const aiEmbeddings = <span class="cstat-no" title="statement not covered" >c.env.AI_EMBEDDINGS.get(aiEmbeddingsId)</span>
 &nbsp;
-    const response = await generateEmbedding(body, aiEmbeddings)
-    return c.json(response, 200)
+    const response = <span class="cstat-no" title="statement not covered" >await generateEmbedding(body, aiEmbeddings)</span>
+<span class="cstat-no" title="statement not covered" >    return c.json(response, 200)</span>
   } catch (error) {
-    console.error('Embedding generation error:', error)
-    return c.json&lt;ErrorResponse, 500&gt;({
+<span class="cstat-no" title="statement not covered" >    console.error('Embedding generation error:', error)</span>
+<span class="cstat-no" title="statement not covered" >    return c.json&lt;ErrorResponse, 500&gt;({</span>
       success: false,
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : '埋め込み生成中にエラーが発生しました'
@@ -346,7 +346,7 @@ export const generateEmbeddingHandler: RouteHandler&lt;typeof generateEmbeddingR
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T10:36:12.067Z
+                at 2025-08-26T10:55:40.685Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

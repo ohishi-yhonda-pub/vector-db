@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>9/9</span>
+                <span class='fraction'>0/9</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>1/1</span>
+                <span class='fraction'>0/1</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>9/9</span>
+                <span class='fraction'>0/9</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -135,7 +135,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -162,20 +162,20 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">5x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">3x</span>
-<span class="cline-any cline-yes">3x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -194,7 +194,7 @@ type EnvType = {
 }
 &nbsp;
 // 利用可能なモデル一覧ルート
-export const listModelsRoute = createRoute({
+export const listModelsRoute = <span class="cstat-no" title="statement not covered" >createRoute({</span>
   method: 'get',
   path: '/embeddings/models',
   responses: {
@@ -221,20 +221,20 @@ export const listModelsRoute = createRoute({
 })
 &nbsp;
 // 利用可能なモデル一覧ハンドラー
-export const listModelsHandler: RouteHandler&lt;typeof listModelsRoute, EnvType&gt; = async (c) =&gt; {
-  try {
-    const aiEmbeddingsId = c.env.AI_EMBEDDINGS.idFromName('default')
-    const aiEmbeddings = c.env.AI_EMBEDDINGS.get(aiEmbeddingsId)
+export const listModelsHandler: RouteHandler&lt;typeof listModelsRoute, EnvType&gt; = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >async (c</span>) =&gt; {</span>
+<span class="cstat-no" title="statement not covered" >  try {</span>
+    const aiEmbeddingsId = <span class="cstat-no" title="statement not covered" >c.env.AI_EMBEDDINGS.idFromName('default')</span>
+    const aiEmbeddings = <span class="cstat-no" title="statement not covered" >c.env.AI_EMBEDDINGS.get(aiEmbeddingsId)</span>
     
-    const models = await aiEmbeddings.getAvailableModels()
+    const models = <span class="cstat-no" title="statement not covered" >await aiEmbeddings.getAvailableModels()</span>
     
-    return c.json&lt;ListModelsResponse, 200&gt;({
+<span class="cstat-no" title="statement not covered" >    return c.json&lt;ListModelsResponse, 200&gt;({</span>
       success: true,
       data: models
     }, 200)
   } catch (error) {
-    console.error('List models error:', error)
-    return c.json&lt;ErrorResponse, 500&gt;({
+<span class="cstat-no" title="statement not covered" >    console.error('List models error:', error)</span>
+<span class="cstat-no" title="statement not covered" >    return c.json&lt;ErrorResponse, 500&gt;({</span>
       success: false,
       error: 'Internal Server Error',
       message: error instanceof Error ? error.message : 'モデル一覧の取得中にエラーが発生しました'
@@ -247,7 +247,7 @@ export const listModelsHandler: RouteHandler&lt;typeof listModelsRoute, EnvType&
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T10:36:12.067Z
+                at 2025-08-26T10:55:40.685Z
             </div>
         <script src="../../../prettify.js"></script>
         <script>

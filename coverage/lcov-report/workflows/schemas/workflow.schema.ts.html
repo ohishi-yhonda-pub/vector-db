@@ -23,9 +23,9 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>5/5</span>
+                <span class='fraction'>0/5</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>5/5</span>
+                <span class='fraction'>0/5</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -116,31 +116,21 @@
 <a name='L51'></a><a href='#L51'>51</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -149,7 +139,17 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -166,21 +166,21 @@
 <span class="cline-any cline-neutral">&nbsp;</span></td><td class="text"><pre class="prettyprint lang-js">import { z } from 'zod'
 &nbsp;
 // Batch Embeddings schemas
-export const batchEmbeddingParamsSchema = z.object({
+export const batchEmbeddingParamsSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
   texts: z.array(z.string().min(1)),
   model: z.string().default('@cf/baai/bge-base-en-v1.5'),
   batchSize: z.number().int().min(1).max(100).default(10),
   saveToVectorize: z.boolean().default(false)
 })
 &nbsp;
-export const batchEmbeddingResultSchema = z.object({
+export const batchEmbeddingResultSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
   text: z.string(),
   embedding: z.array(z.number()).nullable(),
   error: z.string().nullable()
 })
 &nbsp;
 // File Processing schemas
-export const fileProcessingParamsSchema = z.object({
+export const fileProcessingParamsSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
   fileData: z.string().min(1),
   fileName: z.string().min(1),
   fileType: z.string().min(1),
@@ -190,7 +190,7 @@ export const fileProcessingParamsSchema = z.object({
 })
 &nbsp;
 // Notion Sync schemas
-export const notionSyncParamsSchema = z.object({
+export const notionSyncParamsSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
   pageId: z.string().min(1),
   notionToken: z.string().min(1),
   includeBlocks: z.boolean().default(true),
@@ -199,7 +199,7 @@ export const notionSyncParamsSchema = z.object({
 })
 &nbsp;
 // Vector Operations schemas
-export const vectorOperationParamsSchema = z.object({
+export const vectorOperationParamsSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
   type: z.enum(['create', 'delete']),
   // For create operations
   text: z.string().optional(),
@@ -220,7 +220,7 @@ export type VectorOperationParams = z.infer&lt;typeof vectorOperationParamsSchem
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T10:36:12.067Z
+                at 2025-08-26T10:55:40.685Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

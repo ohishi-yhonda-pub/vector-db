@@ -23,30 +23,30 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>11/11</span>
+                <span class='fraction'>0/11</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>7/7</span>
+                <span class='fraction'>0/7</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Functions</span>
-                <span class='fraction'>2/2</span>
+                <span class='fraction'>0/2</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">100% </span>
+                <span class="strong">0% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>11/11</span>
+                <span class='fraction'>0/11</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line high'></div>
+    <div class='status-line low'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -129,7 +129,7 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">1x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -153,33 +153,33 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">10x</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-yes">7x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">6x</span>
-<span class="cline-any cline-yes">2x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">4x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -191,7 +191,7 @@
 import { z } from 'zod'
 &nbsp;
 // 入力パラメータのスキーマ
-export const embeddingParamsSchema = z.object({
+export const embeddingParamsSchema = <span class="cstat-no" title="statement not covered" >z.object({</span>
   text: z.string(),
   model: z.string().optional().default('@cf/baai/bge-base-en-v1.5')
 })
@@ -213,27 +213,27 @@ export interface EmbeddingResult {
  * このワークフローはEmbedding生成のみを担当し、Vectorizeへの保存は行わない
  */
 export class EmbeddingsWorkflow extends WorkflowEntrypoint&lt;Env, EmbeddingParams&gt; {
-  async run(event: WorkflowEvent&lt;EmbeddingParams&gt;, step: WorkflowStep): Promise&lt;EmbeddingResult&gt; {
+<span class="fstat-no" title="function not covered" >  async r</span>un(event: WorkflowEvent&lt;EmbeddingParams&gt;, step: WorkflowStep): Promise&lt;EmbeddingResult&gt; {
     // パラメータのバリデーション
-    const params = embeddingParamsSchema.parse(event.payload)
-    const { text, model } = params
+    const params = <span class="cstat-no" title="statement not covered" >embeddingParamsSchema.parse(event.payload)</span>
+    const { text, model } = <span class="cstat-no" title="statement not covered" >params</span>
 &nbsp;
-    try {
+<span class="cstat-no" title="statement not covered" >    try {</span>
       // Embedding生成ステップ
-      const embeddingData = await step.do('generate-embedding', async () =&gt; {
-        const aiResult = await this.env.AI.run(model as keyof AiModels, { text })
+      const embeddingData = <span class="cstat-no" title="statement not covered" >await step.do('generate-embedding', <span class="fstat-no" title="function not covered" >async () =&gt; {</span></span>
+        const aiResult = <span class="cstat-no" title="statement not covered" >await this.env.AI.run(model as keyof AiModels, { text })</span>
 &nbsp;
-        if (!('data' in aiResult) || !aiResult.data || aiResult.data.length === 0) {
-          throw new Error('Failed to generate embedding')
+<span class="cstat-no" title="statement not covered" >        if (!('data' in aiResult) || !aiResult.data || aiResult.data.length === 0) {</span>
+<span class="cstat-no" title="statement not covered" >          throw new Error('Failed to generate embedding')</span>
         }
 &nbsp;
-        return {
+<span class="cstat-no" title="statement not covered" >        return {</span>
           embedding: aiResult.data[0],
           dimensions: aiResult.data[0].length
         }
       })
 &nbsp;
-      return {
+<span class="cstat-no" title="statement not covered" >      return {</span>
         success: true,
         embedding: embeddingData.embedding,
         model,
@@ -241,7 +241,7 @@ export class EmbeddingsWorkflow extends WorkflowEntrypoint&lt;Env, EmbeddingPara
         completedAt: new Date().toISOString()
       }
     } catch (error) {
-      return {
+<span class="cstat-no" title="statement not covered" >      return {</span>
         success: false,
         model,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -256,7 +256,7 @@ export class EmbeddingsWorkflow extends WorkflowEntrypoint&lt;Env, EmbeddingPara
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T10:36:12.067Z
+                at 2025-08-26T10:55:40.685Z
             </div>
         <script src="../prettify.js"></script>
         <script>
