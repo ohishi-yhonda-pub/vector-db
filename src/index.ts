@@ -38,7 +38,7 @@ app.get("/", (c) => {
 })
 
 // OpenAPIドキュメント設定
-app.doc('/specification', {
+app.doc('/specification', (c) => ({
   openapi: '3.0.0',
   info: {
     version: '1.0.0',
@@ -48,10 +48,14 @@ app.doc('/specification', {
   servers: [
     {
       url: 'http://localhost:8787',
-      description: 'ローカル開発サーバー'
+      description: 'Local development server'
+    },
+    {
+      url: c.req.url.replace(/\/specification.*$/, ''),
+      description: 'Current server'
     }
   ]
-})
+}))
 
 // Swagger UI
 app.get('/doc', swaggerUI({ url: '/specification' }))

@@ -105,10 +105,70 @@ export const uploadFileRoute = createRoute({
 // ファイルアップロードハンドラー
 export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = async (c) => {
   try {
+    // リクエストヘッダーの確認
+    const contentType = c.req.header('content-type')
+    console.log('Request headers:', {
+      'content-type': contentType,
+      'content-length': c.req.header('content-length'),
+      'accept-charset': c.req.header('accept-charset')
+    })
+    
     const formData = await c.req.formData()
-    const file = formData.get('file') as File
+    const file = formData.get('file')
+    
+    // Fileオブジェクトかどうか確認
+    if (!(file instanceof File)) {
+      console.error('Not a File object:', file)
+      return c.json<ErrorResponse, 400>({
+        success: false,
+        error: 'Bad Request',
+        message: 'ファイルが正しくアップロードされていません'
+      }, 400)
+    }
     const namespace = formData.get('namespace') as string | null
     const metadataStr = formData.get('metadata') as string | null
+    
+    // File オブジェクトの詳細をログ出力
+    console.log('File object:', {
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+      // File APIの他のプロパティも確認
+      constructor: file.constructor.name
+    })
+    
+    // ファイル名のデコード処理（文字化け対策）
+    let fileName = file.name
+    console.log('Original filename:', fileName)
+    console.log('Filename char codes:', Array.from(fileName).map(c => c.charCodeAt(0)))
+    
+    try {
+      // Latin-1として解釈された文字を元のバイト列に戻す
+      const originalBytes = new Uint8Array(fileName.length)
+      for (let i = 0; i < fileName.length; i++) {
+        originalBytes[i] = fileName.charCodeAt(i)
+      }
+      
+      // UTF-8としてデコードし直す
+      const decoder = new TextDecoder('utf-8')
+      try {
+        const decodedName = decoder.decode(originalBytes)
+        console.log('Decoded filename:', decodedName)
+        // 正常にデコードできたか確認（日本語文字が含まれているか）
+        if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(decodedName)) {
+          fileName = decodedName
+          console.log('Using decoded filename:', fileName)
+        } else {
+          console.log('No Japanese characters found in decoded name')
+        }
+      } catch (e) {
+        // デコードに失敗した場合は元のファイル名を使用
+        console.log('Failed to decode filename as UTF-8, using original:', fileName, e)
+      }
+    } catch (error) {
+      console.error('Error processing filename:', error)
+    }
 
     // ファイルサイズチェック (10MB)
     if (file.size > 10 * 1024 * 1024) {
@@ -142,9 +202,20 @@ export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = 
     }
     const validatedMetadata = parseResult.data
 
-    // ファイルをBase64エンコード
+    // ファイルをBase64エンコード（大きなファイル対応）
     const arrayBuffer = await file.arrayBuffer()
-    const fileDataBase64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)))
+    const uint8Array = new Uint8Array(arrayBuffer)
+    
+    // バイナリ文字列を作成（チャンクごとに処理）
+    const chunkSize = 8192
+    let binaryString = ''
+    for (let i = 0; i < uint8Array.length; i += chunkSize) {
+      const chunk = uint8Array.slice(i, Math.min(i + chunkSize, uint8Array.length))
+      binaryString += String.fromCharCode(...chunk)
+    }
+    
+    // 全体を一度にBase64エンコード
+    const fileDataBase64 = btoa(binaryString)
 
     // VectorManagerを使用してファイルを処理
     const vectorManagerId = c.env.VECTOR_CACHE.idFromName('global')
@@ -152,7 +223,7 @@ export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = 
     
     const result = await vectorManager.processFileAsync(
       fileDataBase64,
-      file.name,
+      fileName,  // デコード済みのファイル名を使用
       file.type,
       file.size,
       namespace || undefined,
@@ -166,7 +237,7 @@ export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = 
         workflowId: result.workflowId,
         status: result.status,
         fileInfo: {
-          name: file.name,
+          name: fileName,  // デコード済みのファイル名を使用
           type: file.type,
           size: file.size
         },

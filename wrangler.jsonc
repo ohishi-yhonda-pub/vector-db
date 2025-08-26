@@ -3,6 +3,11 @@
   "main": "src/index.ts",
   "compatibility_date": "2024-12-18",
   "compatibility_flags": ["nodejs_compat"],
+  // ログ設定
+  "logpush": true,
+  "observability": {
+    "enabled": true
+  },
   // Vectorize設定
   "vectorize": [
     {
@@ -34,8 +39,8 @@
   // Durable Objects Migrations
   "migrations": [
     {
-      "tag": "v1",
-      "new_classes": [
+      "tag": "v3",
+      "new_sqlite_classes": [
         "VectorManager",
         "AIEmbeddings",
         "NotionManager"

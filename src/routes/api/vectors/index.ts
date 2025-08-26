@@ -7,10 +7,11 @@ import { getJobStatusRoute, getJobStatusHandler, getAllJobsRoute, getAllJobsHand
 
 // エクスポート用関数
 export default (app: OpenAPIHono<{ Bindings: Env }>) => {
-  app.openapi(createVectorRoute, createVectorHandler)
-  app.openapi(getVectorRoute, getVectorHandler)
-  app.openapi(listVectorsRoute, listVectorsHandler)
-  app.openapi(deleteVectorRoute, deleteVectorHandler)
-  app.openapi(getJobStatusRoute, getJobStatusHandler)
+  // 具体的なパスを先に登録（/vectors/jobs を /vectors/{id} より前に）
   app.openapi(getAllJobsRoute, getAllJobsHandler)
+  app.openapi(getJobStatusRoute, getJobStatusHandler)
+  app.openapi(createVectorRoute, createVectorHandler)
+  app.openapi(listVectorsRoute, listVectorsHandler)
+  app.openapi(getVectorRoute, getVectorHandler)
+  app.openapi(deleteVectorRoute, deleteVectorHandler)
 }
