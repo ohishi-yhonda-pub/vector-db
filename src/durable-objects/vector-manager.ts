@@ -50,6 +50,7 @@ interface VectorManagerState {
   searchHistory: SearchHistoryEntry[]
   vectorJobs: Record<string, VectorJob>
   fileProcessingJobs: Record<string, FileProcessingJob>
+  recentVectors?: VectorizeVector[]  // 最新10件のベクトルを保存
 }
 
 export class VectorManager extends Agent<Env, VectorManagerState> {
@@ -170,21 +171,47 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
     const jobId = `vec_create_${Date.now()}`
     
     // Step 1: Generate embedding using EmbeddingsWorkflow
-    const embeddingWorkflow = await this.env.EMBEDDINGS_WORKFLOW.create({
-      id: `embed_${jobId}`,
+    const embeddingWorkflowId = `embed_${jobId}`
+    await this.env.EMBEDDINGS_WORKFLOW.create({
+      id: embeddingWorkflowId,
       params: {
         text,
         model: model || this.env.DEFAULT_EMBEDDING_MODEL
       }
     })
     
-    // Wait for embedding to complete
-    const embeddingResult = await embeddingWorkflow.get()
+    // Wait for embedding to complete  
+    const embeddingWorkflowInstance = await this.env.EMBEDDINGS_WORKFLOW.get(embeddingWorkflowId)
     
-    if (!embeddingResult.success || !embeddingResult.embedding) {
-      throw new Error(`Failed to generate embedding: ${embeddingResult.error || 'Unknown error'}`)
+    // Poll for workflow completion
+    let attempts = 0
+    const maxAttempts = 30 // 30 seconds timeout
+    let embeddingResult = null
+    
+    while (attempts < maxAttempts) {
+      const statusResult = await embeddingWorkflowInstance.status()
+      console.log(`Attempt ${attempts + 1}: Workflow status:`, statusResult)
+      
+      if (statusResult.status === 'complete' && statusResult.output) {
+        embeddingResult = statusResult.output
+        break
+      } else if (statusResult.status === 'errored') {
+        throw new Error(`Workflow failed: ${statusResult.error || 'Unknown error'}`)
+      }
+      
+      // Wait 1 second before next attempt
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      attempts++
     }
     
+    if (!embeddingResult) {
+      throw new Error('Workflow did not complete within timeout')
+    }
+    
+    if (!embeddingResult.success || !embeddingResult.embedding) {
+      console.error('Final embedding result:', embeddingResult)
+      throw new Error(`Failed to generate embedding: ${embeddingResult.error || 'Unknown error'}`)
+    }
     // Step 2: Save vector using VectorOperationsWorkflow
     const workflow = await this.env.VECTOR_OPERATIONS_WORKFLOW.create({
       id: jobId,
@@ -200,16 +227,61 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
       }
     })
     
+    // Wait for vector operations workflow to complete
+    const vectorWorkflowInstance = await this.env.VECTOR_OPERATIONS_WORKFLOW.get(jobId)
+    attempts = 0
+    let vectorResult = null
+    
+    while (attempts < maxAttempts) {
+      const statusResult = await vectorWorkflowInstance.status()
+      console.log(`Vector workflow attempt ${attempts + 1}:`, statusResult.status)
+      
+      if (statusResult.status === 'complete' && statusResult.output) {
+        vectorResult = statusResult.output
+        break
+      } else if (statusResult.status === 'errored') {
+        throw new Error(`Vector workflow failed: ${statusResult.error || 'Unknown error'}`)
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, 1000))
+      attempts++
+    }
+    
+    if (!vectorResult || !vectorResult.success) {
+      throw new Error(`Failed to save vector: ${vectorResult?.error || 'Unknown error'}`)
+    }
+    
+    console.log('Vector saved successfully:', vectorResult.vectorId)
+    
+    // 最新10件のベクトルをstateに保存
+    const newVector: VectorizeVector = {
+      id: vectorResult.vectorId,
+      values: embeddingResult.embedding,
+      namespace: namespace || 'default',
+      metadata: {
+        ...metadata,
+        text,
+        model: embeddingResult.model,
+        createdAt: new Date().toISOString()
+      }
+    }
+    
+    // 既存のベクトルリストを取得（最大10件）
+    const existingVectors = this.state.recentVectors || []
+    const updatedVectors = [newVector, ...existingVectors].slice(0, 10)
+    
     // ジョブを作成
     const job: VectorJob = {
       id: jobId,
       type: 'create',
-      status: 'pending',
+      status: 'completed', // 完了ステータスに変更
       createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
       text,
       model,
       namespace,
-      metadata
+      metadata,
+      vectorId: vectorResult.vectorId
     }
     
     this.setState({
@@ -217,10 +289,11 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
       vectorJobs: {
         ...this.state.vectorJobs,
         [jobId]: job
-      }
+      },
+      recentVectors: updatedVectors
     })
     
-    return { jobId, workflowId: workflow.id, status: 'processing' }
+    return { jobId, workflowId: workflow.id, status: 'completed' }
   }
 
   // 非同期ベクトル削除（Workflow使用）
@@ -447,12 +520,23 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
     count: number
     nextCursor?: string
   }> {
-    // 実際の実装では、Vectorizeから適切にリストを取得する
-    // 今はダミーデータを返す
+    // Durable Objectのstateから最新10件のベクトルを返す
+    const recentVectors = this.state.recentVectors || []
+    
+    // namespaceでフィルタリング（指定されている場合）
+    let filteredVectors = recentVectors
+    if (options.namespace) {
+      filteredVectors = recentVectors.filter(v => v.namespace === options.namespace)
+    }
+    
+    // limitに応じて制限
+    const limit = options.limit || 10
+    const resultVectors = filteredVectors.slice(0, Math.min(limit, 10))
+    
     return {
-      vectors: [],
-      count: 0,
-      nextCursor: undefined
+      vectors: resultVectors,
+      count: resultVectors.length,
+      nextCursor: undefined // 10件以内なのでページネーション不要
     }
   }
 }
