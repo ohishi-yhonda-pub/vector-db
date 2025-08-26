@@ -35,9 +35,21 @@ export const uploadFileRoute = createRoute({
       content: {
         'multipart/form-data': {
           schema: z.object({
-            file: z.instanceof(File),
-            namespace: z.string().optional(),
-            metadata: z.string().optional() // JSON string
+            file: z.instanceof(File).openapi({
+              type: 'string',
+              format: 'binary',
+              description: 'アップロードするファイル（PDF、JPEG、PNG、GIF、WebP）'
+            }),
+            namespace: z.string().optional().openapi({
+              description: 'ベクトルの名前空間（オプション）',
+              example: 'documents'
+            }),
+            metadata: z.string().optional().openapi({
+              description: 'メタデータ（JSON形式の文字列）',
+              example: '{"category": "report", "year": 2024}'
+            })
+          }).openapi({
+            required: ['file']
           })
         }
       }
