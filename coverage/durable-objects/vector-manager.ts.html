@@ -25,14 +25,14 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>90/90</span>
+                <span class='fraction'>94/94</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>36/36</span>
+                <span class='fraction'>44/44</span>
             </div>
         
             
@@ -46,7 +46,7 @@
             <div class='fl pad1y space-right2'>
                 <span class="strong">100% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>86/86</span>
+                <span class='fraction'>90/90</span>
             </div>
         
             
@@ -501,7 +501,26 @@
 <a name='L436'></a><a href='#L436'>436</a>
 <a name='L437'></a><a href='#L437'>437</a>
 <a name='L438'></a><a href='#L438'>438</a>
-<a name='L439'></a><a href='#L439'>439</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
+<a name='L439'></a><a href='#L439'>439</a>
+<a name='L440'></a><a href='#L440'>440</a>
+<a name='L441'></a><a href='#L441'>441</a>
+<a name='L442'></a><a href='#L442'>442</a>
+<a name='L443'></a><a href='#L443'>443</a>
+<a name='L444'></a><a href='#L444'>444</a>
+<a name='L445'></a><a href='#L445'>445</a>
+<a name='L446'></a><a href='#L446'>446</a>
+<a name='L447'></a><a href='#L447'>447</a>
+<a name='L448'></a><a href='#L448'>448</a>
+<a name='L449'></a><a href='#L449'>449</a>
+<a name='L450'></a><a href='#L450'>450</a>
+<a name='L451'></a><a href='#L451'>451</a>
+<a name='L452'></a><a href='#L452'>452</a>
+<a name='L453'></a><a href='#L453'>453</a>
+<a name='L454'></a><a href='#L454'>454</a>
+<a name='L455'></a><a href='#L455'>455</a>
+<a name='L456'></a><a href='#L456'>456</a>
+<a name='L457'></a><a href='#L457'>457</a>
+<a name='L458'></a><a href='#L458'>458</a></td><td class="line-coverage quiet"><span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -558,15 +577,15 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">37x</span>
+<span class="cline-any cline-yes">39x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">37x</span>
-<span class="cline-any cline-yes">37x</span>
+<span class="cline-any cline-yes">39x</span>
+<span class="cline-any cline-yes">39x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -670,10 +689,29 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">13x</span>
+<span class="cline-any cline-yes">2x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">11x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">11x</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -1110,15 +1148,34 @@ export class VectorManager extends Agent&lt;Env, VectorManagerState&gt; {
   ): Promise&lt;{ jobId: string; workflowId: string; status: string }&gt; {
     const jobId = `vec_create_${Date.now()}`
     
-    // Workflowを作成
+    // Step 1: Generate embedding using EmbeddingsWorkflow
+    const embeddingWorkflow = await this.env.EMBEDDINGS_WORKFLOW.create({
+      id: `embed_${jobId}`,
+      params: {
+        text,
+        model: model || this.env.DEFAULT_EMBEDDING_MODEL
+      }
+    })
+    
+    // Wait for embedding to complete
+    const embeddingResult = await embeddingWorkflow.get()
+    
+    if (!embeddingResult.success || !embeddingResult.embedding) {
+      throw new Error(`Failed to generate embedding: ${embeddingResult.error || 'Unknown error'}`)
+    }
+    
+    // Step 2: Save vector using VectorOperationsWorkflow
     const workflow = await this.env.VECTOR_OPERATIONS_WORKFLOW.create({
       id: jobId,
       params: {
         type: 'create',
-        text,
-        model,
+        embedding: embeddingResult.embedding,
         namespace,
-        metadata
+        metadata: {
+          ...metadata,
+          text,
+          model: embeddingResult.model
+        }
       }
     })
     
@@ -1384,7 +1441,7 @@ export class VectorManager extends Agent&lt;Env, VectorManagerState&gt; {
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-08-26T02:51:38.016Z
+                at 2025-08-26T10:36:12.012Z
             </div>
         <script src="../prettify.js"></script>
         <script>
