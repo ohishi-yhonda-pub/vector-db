@@ -18,6 +18,10 @@ export interface BatchEmbeddingResult {
   failedCount: number
 }
 
+/**
+ * BatchEmbeddingsWorkflow - 複数のテキストから埋め込みベクトルを生成するワークフロー
+ * このワークフローはEmbedding生成のみを担当し、Vectorizeへの保存は行わない
+ */
 export class BatchEmbeddingsWorkflow extends WorkflowEntrypoint<Env, BatchEmbeddingParams> {
   // 単一のテキストに対して埋め込みを生成するメソッド
   private async generateSingleEmbedding(text: string, model: string = '@cf/baai/bge-base-en-v1.5'): Promise<{
@@ -52,7 +56,7 @@ export class BatchEmbeddingsWorkflow extends WorkflowEntrypoint<Env, BatchEmbedd
   async run(event: WorkflowEvent<BatchEmbeddingParams>, step: WorkflowStep): Promise<BatchEmbeddingResult> {
     // パラメータをバリデーション
     const params = batchEmbeddingParamsSchema.parse(event.payload)
-    const { texts, model, batchSize, saveToVectorize } = params
+    const { texts, model, batchSize } = params  // saveToVectorizeを削除
 
     // テキストをバッチに分割
     const batches: string[][] = []
@@ -94,24 +98,7 @@ export class BatchEmbeddingsWorkflow extends WorkflowEntrypoint<Env, BatchEmbedd
       error: string
     }>
 
-    // Vectorizeに保存
-    if (saveToVectorize && successful.length > 0) {
-      await step.do('save-to-vectorize', async () => {
-        const vectors = successful.map((result, index) => ({
-          id: `workflow_${Date.now()}_${index}`,
-          values: result.embedding!,
-          namespace: 'batch-embeddings',
-          metadata: {
-            text: result.text,
-            model: model,
-            timestamp: new Date().toISOString()
-          }
-        }))
-
-        await this.env.VECTORIZE_INDEX.insert(vectors)
-        return { savedCount: vectors.length }
-      })
-    }
+    // Vectorizeへの保存は削除 - 呼び出し元が必要に応じてVectorOperationsWorkflowを使用する
 
     return {
       embeddings: successful,

@@ -185,48 +185,43 @@ describe('BatchEmbeddingsWorkflow', () => {
       })
     })
 
-    it('should save to Vectorize when enabled', async () => {
+    it('should return embeddings without saving to Vectorize', async () => {
       const texts = ['text1', 'text2']
       
-      mockStep.do
-        .mockImplementationOnce(async (name, fn) => fn()) // process batch
-        .mockImplementationOnce(async (name, fn) => fn()) // save to vectorize
+      mockStep.do.mockImplementation(async (name, fn) => fn())
       
       mockEnv.AI.run.mockResolvedValue({
         data: [[0.1, 0.2, 0.3]]
       })
 
-      const event = createMockEvent({ texts, saveToVectorize: true })
-      await workflow.run(event as any, mockStep as any)
+      const event = createMockEvent({ texts })
+      const result = await workflow.run(event as any, mockStep as any)
 
-      expect(mockStep.do).toHaveBeenCalledWith('save-to-vectorize', expect.any(Function))
-      expect(mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            id: expect.stringContaining('workflow_'),
-            values: [0.1, 0.2, 0.3],
-            namespace: 'batch-embeddings',
-            metadata: expect.objectContaining({
-              text: 'text1',
-              model: '@cf/baai/bge-base-en-v1.5'
-            })
-          })
-        ])
-      )
+      // Should NOT save to Vectorize anymore
+      expect(mockEnv.VECTORIZE_INDEX.insert).not.toHaveBeenCalled()
+      
+      // Should return embeddings in result
+      expect(result.embeddings).toHaveLength(2)
+      expect(result.embeddings[0]).toEqual({
+        text: 'text1',
+        embedding: [0.1, 0.2, 0.3],
+        error: null
+      })
     })
 
-    it('should not save to Vectorize when all embeddings fail', async () => {
+    it('should handle all embeddings failing', async () => {
       const texts = ['text1', 'text2']
       
       mockStep.do.mockImplementation(async (name, fn) => fn())
       mockEnv.AI.run.mockRejectedValue(new Error('Failed'))
 
-      const event = createMockEvent({ texts, saveToVectorize: true })
+      const event = createMockEvent({ texts })
       const result = await workflow.run(event as any, mockStep as any)
 
       expect(mockStep.do).toHaveBeenCalledTimes(1) // Only process batch
       expect(mockEnv.VECTORIZE_INDEX.insert).not.toHaveBeenCalled()
       expect(result.failedCount).toBe(2)
+      expect(result.failed).toHaveLength(2)
     })
 
     it('should use custom parameters', async () => {

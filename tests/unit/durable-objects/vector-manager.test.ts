@@ -53,6 +53,15 @@ describe('VectorManager Durable Object', () => {
 
     mockEnv = {
       VECTORIZE_INDEX: mockVectorizeIndex,
+      EMBEDDINGS_WORKFLOW: {
+        create: vi.fn().mockResolvedValue({
+          get: vi.fn().mockResolvedValue({
+            success: true,
+            embedding: [0.1, 0.2, 0.3],
+            model: '@cf/baai/bge-base-en-v1.5'
+          })
+        })
+      },
       VECTOR_OPERATIONS_WORKFLOW: {
         create: vi.fn().mockResolvedValue(mockWorkflow),
         get: vi.fn().mockResolvedValue(mockWorkflow)
@@ -60,7 +69,8 @@ describe('VectorManager Durable Object', () => {
       FILE_PROCESSING_WORKFLOW: {
         create: vi.fn().mockResolvedValue(mockWorkflow),
         get: vi.fn().mockResolvedValue(mockWorkflow)
-      }
+      },
+      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5'
     }
 
     mockCtx = {
@@ -292,14 +302,27 @@ describe('VectorManager Durable Object', () => {
 
       const result = await vectorManager.createVectorAsync(text, model, namespace, metadata)
 
+      // Should first call EMBEDDINGS_WORKFLOW to generate embedding
+      expect(mockEnv.EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
+        id: expect.stringContaining('embed_vec_create_'),
+        params: {
+          text,
+          model
+        }
+      })
+
+      // Then call VECTOR_OPERATIONS_WORKFLOW with the embedding
       expect(mockEnv.VECTOR_OPERATIONS_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining('vec_create_'),
         params: {
           type: 'create',
-          text,
-          model,
+          embedding: [0.1, 0.2, 0.3],
           namespace,
-          metadata
+          metadata: {
+            ...metadata,
+            text,
+            model: '@cf/baai/bge-base-en-v1.5'
+          }
         }
       })
 
@@ -317,6 +340,44 @@ describe('VectorManager Durable Object', () => {
         namespace,
         metadata
       })
+    })
+
+    it('should handle embedding generation failure', async () => {
+      const text = 'Test text'
+      
+      // Mock embedding generation to fail
+      mockEnv.EMBEDDINGS_WORKFLOW.create.mockResolvedValueOnce({
+        get: vi.fn().mockResolvedValue({
+          success: false,
+          error: 'Failed to generate embedding'
+        })
+      })
+
+      await expect(vectorManager.createVectorAsync(text)).rejects.toThrow(
+        'Failed to generate embedding: Failed to generate embedding'
+      )
+      
+      // Should not call VECTOR_OPERATIONS_WORKFLOW when embedding fails
+      expect(mockEnv.VECTOR_OPERATIONS_WORKFLOW.create).not.toHaveBeenCalled()
+    })
+
+    it('should handle embedding generation failure without error message', async () => {
+      const text = 'Test text'
+      
+      // Mock embedding generation to fail without error message
+      mockEnv.EMBEDDINGS_WORKFLOW.create.mockResolvedValueOnce({
+        get: vi.fn().mockResolvedValue({
+          success: false
+          // No error field
+        })
+      })
+
+      await expect(vectorManager.createVectorAsync(text)).rejects.toThrow(
+        'Failed to generate embedding: Unknown error'
+      )
+      
+      // Should not call VECTOR_OPERATIONS_WORKFLOW when embedding fails
+      expect(mockEnv.VECTOR_OPERATIONS_WORKFLOW.create).not.toHaveBeenCalled()
     })
   })
 

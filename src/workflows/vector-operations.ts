@@ -4,8 +4,8 @@ import { z } from 'zod'
 // Zodスキーマで型を定義
 const CreateOperationParamsSchema = z.object({
   type: z.literal('create'),
-  text: z.string(),
-  model: z.string().optional(),
+  embedding: z.array(z.number()),  // テキストではなく、生成済みのembeddingを受け取る
+  vectorId: z.string().optional(),  // オプションでIDを指定可能
   namespace: z.string().optional(),
   metadata: z.record(z.string(), z.any()).optional()
 })
@@ -52,38 +52,20 @@ export class VectorOperationsWorkflow extends WorkflowEntrypoint<Env, VectorOper
     step: WorkflowStep
   ): Promise<VectorOperationResult> {
     try {
-      // Step 1: Generate embedding
-      const embedding = await step.do('generate-embedding', async () => {
-        const model = params.model || this.env.DEFAULT_EMBEDDING_MODEL
-        // BaseAiTextEmbeddingsModelsの型を使用
-        const aiResult = await this.env.AI.run(model as keyof AiModels, { text: params.text })
-
-        if (!('data' in aiResult) || !aiResult.data || aiResult.data.length === 0) {
-          throw new Error('Failed to generate embedding')
-        }
-
-        return {
-          embedding: aiResult.data[0],
-          model
-        }
-      })
-
-      // Step 2: Create vector ID
+      // Step 1: Create vector ID (既に指定されていない場合)
       const vectorId = await step.do('create-vector-id', async () => {
-        return `vec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+        return params.vectorId || `vec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
       })
 
-      // Step 3: Save to Vectorize
+      // Step 2: Save to Vectorize (既に生成済みのembeddingを保存)
       await step.do('save-to-vectorize', async () => {
         const vector: VectorizeVector = {
           id: vectorId,
-          values: embedding.embedding,
+          values: params.embedding,
           namespace: params.namespace || 'default',
           metadata: {
             ...params.metadata,
-            model: embedding.model,
-            dimensions: embedding.embedding.length.toString(),
-            ...(params.text && { text: params.text }),
+            dimensions: params.embedding.length.toString(),
             createdAt: new Date().toISOString()
           }
         }
@@ -95,7 +77,7 @@ export class VectorOperationsWorkflow extends WorkflowEntrypoint<Env, VectorOper
         type: 'create',
         success: true,
         vectorId,
-        dimensions: embedding.embedding.length,
+        dimensions: params.embedding.length,
         completedAt: new Date().toISOString()
       }
     } catch (error) {

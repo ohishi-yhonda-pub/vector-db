@@ -89,6 +89,7 @@ app.onError((err, c) => {
 // Durable Objectsをエクスポート
 export { VectorManager, AIEmbeddings, NotionManager } from './durable-objects'
 // Workflowsをエクスポート
+export { EmbeddingsWorkflow } from './workflows/embeddings'
 export { BatchEmbeddingsWorkflow } from './workflows/batch-embeddings'
 export { VectorOperationsWorkflow } from './workflows/vector-operations'
 export { FileProcessingWorkflow } from './workflows/file-processing'

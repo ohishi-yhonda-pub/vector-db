@@ -10,8 +10,12 @@ vi.mock('cloudflare:workers', () => ({
 }))
 
 // Mock dependencies
-vi.mock('../../../src/services/notion.service')
-vi.mock('../../../src/db')
+vi.mock('../../../src/services/notion.service', () => ({
+  NotionService: vi.fn()
+}))
+vi.mock('../../../src/db', () => ({
+  getDb: vi.fn()
+}))
 vi.mock('drizzle-orm', async (importOriginal) => {
   const actual = await importOriginal() as Record<string, any>
   return {
@@ -93,8 +97,8 @@ describe('NotionSyncWorkflow', () => {
       })
     }
     
-    vi.mocked(NotionService).mockImplementation(() => mockNotionService)
-    vi.mocked(getDb).mockReturnValue(mockDb)
+    ;(NotionService as any).mockImplementation(() => mockNotionService)
+    ;(getDb as any).mockReturnValue(mockDb)
 
     workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
   })

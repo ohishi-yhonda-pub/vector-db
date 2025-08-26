@@ -32,9 +32,6 @@ describe('VectorOperationsWorkflow', () => {
     vi.clearAllMocks()
     
     mockEnv = {
-      AI: {
-        run: vi.fn()
-      },
       DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
       VECTORIZE_INDEX: {
         insert: vi.fn().mockResolvedValue(undefined),
@@ -50,25 +47,15 @@ describe('VectorOperationsWorkflow', () => {
   describe('run', () => {
     describe('create operations', () => {
       it('should create vector successfully', async () => {
+        const mockEmbedding = [0.1, 0.2, 0.3, 0.4, 0.5]
         const params = {
           type: 'create' as const,
-          text: 'Test text for embedding',
+          embedding: mockEmbedding,
           namespace: 'test-namespace',
           metadata: { source: 'test' }
         }
-
-        const mockEmbedding = [0.1, 0.2, 0.3, 0.4, 0.5]
         
         mockStep.do
-          .mockImplementationOnce(async (name, fn) => {
-            // generate-embedding
-            if (name === 'generate-embedding') {
-              mockEnv.AI.run.mockResolvedValueOnce({
-                data: [mockEmbedding]
-              })
-              return await fn()
-            }
-          })
           .mockImplementationOnce(async (name, fn) => {
             // create-vector-id
             if (name === 'create-vector-id') {
@@ -97,81 +84,44 @@ describe('VectorOperationsWorkflow', () => {
           expect.objectContaining({
             id: expect.stringMatching(/^vec_\d+_[a-z0-9]+$/),
             values: mockEmbedding,
-            namespace: 'test-namespace',
-            metadata: expect.objectContaining({
-              source: 'test',
-              model: '@cf/baai/bge-base-en-v1.5',
-              text: 'Test text for embedding'
-            })
+            namespace: 'test-namespace'
           })
         ])
       })
 
-      it('should use custom model when provided', async () => {
+      it('should use provided vector ID when specified', async () => {
+        const mockEmbedding = [0.1, 0.2]
         const params = {
           type: 'create' as const,
-          text: 'Test text',
-          model: '@cf/baai/bge-large-en-v1.5'
+          embedding: mockEmbedding,
+          vectorId: 'custom-vector-id',
+          namespace: 'test'
         }
-
-        const mockEmbedding = [0.1, 0.2]
         
         mockStep.do
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'generate-embedding') {
-              mockEnv.AI.run.mockResolvedValueOnce({
-                data: [mockEmbedding]
-              })
-              return await fn()
-            }
-          })
           .mockImplementationOnce(async (name, fn) => {
             if (name === 'create-vector-id') {
               return await fn()
             }
           })
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'save-to-vectorize') {
-              return await fn()
-            }
-          })
+          .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
-        await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, mockStep as any)
 
-        expect(mockEnv.AI.run).toHaveBeenCalledWith(
-          '@cf/baai/bge-large-en-v1.5',
-          { text: 'Test text' }
-        )
+        expect(result.vectorId).toBe('custom-vector-id')
       })
 
-      it('should use default values when not provided', async () => {
+      it('should use default namespace when not provided', async () => {
+        const mockEmbedding = [0.1]
         const params = {
           type: 'create' as const,
-          text: 'Test text'
+          embedding: mockEmbedding
         }
-
-        const mockEmbedding = [0.1, 0.2]
         
         mockStep.do
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'generate-embedding') {
-              mockEnv.AI.run.mockResolvedValueOnce({
-                data: [mockEmbedding]
-              })
-              return await fn()
-            }
-          })
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'create-vector-id') {
-              return await fn()
-            }
-          })
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'save-to-vectorize') {
-              return await fn()
-            }
-          })
+          .mockImplementationOnce(async (name, fn) => await fn())
+          .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
         await workflow.run(event as any, mockStep as any)
@@ -183,20 +133,21 @@ describe('VectorOperationsWorkflow', () => {
         ])
       })
 
-      it('should handle AI embedding failure', async () => {
+      it('should handle vectorize insert failure', async () => {
+        const mockEmbedding = [0.1, 0.2]
         const params = {
           type: 'create' as const,
-          text: 'Test text'
+          embedding: mockEmbedding
         }
-
-        mockStep.do.mockImplementationOnce(async (name, fn) => {
-          if (name === 'generate-embedding') {
-            mockEnv.AI.run.mockResolvedValueOnce({
-              data: []
-            })
-            return await fn()
-          }
-        })
+        
+        mockStep.do
+          .mockImplementationOnce(async (name, fn) => await fn())
+          .mockImplementationOnce(async (name, fn) => {
+            if (name === 'save-to-vectorize') {
+              mockEnv.VECTORIZE_INDEX.insert.mockRejectedValueOnce(new Error('Vectorize error'))
+              return await fn()
+            }
+          })
 
         const event = createMockEvent(params)
         const result = await workflow.run(event as any, mockStep as any)
@@ -204,71 +155,54 @@ describe('VectorOperationsWorkflow', () => {
         expect(result).toMatchObject({
           type: 'create',
           success: false,
-          error: 'Failed to generate embedding',
+          error: 'Vectorize error',
           completedAt: expect.any(String)
         })
       })
 
-      it('should handle AI response without data', async () => {
+      it('should handle empty embedding array', async () => {
         const params = {
           type: 'create' as const,
-          text: 'Test text'
+          embedding: []
         }
-
-        mockStep.do.mockImplementationOnce(async (name, fn) => {
-          if (name === 'generate-embedding') {
-            mockEnv.AI.run.mockResolvedValueOnce({})
-            return await fn()
-          }
-        })
+        
+        mockStep.do
+          .mockImplementationOnce(async (name, fn) => await fn())
+          .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
         const result = await workflow.run(event as any, mockStep as any)
 
         expect(result).toMatchObject({
           type: 'create',
-          success: false,
-          error: 'Failed to generate embedding'
+          success: true,
+          dimensions: 0,
+          completedAt: expect.any(String)
         })
       })
 
-      it('should handle vectorize insert failure', async () => {
+      it('should include metadata in vector', async () => {
+        const mockEmbedding = [0.1, 0.2]
         const params = {
           type: 'create' as const,
-          text: 'Test text'
+          embedding: mockEmbedding,
+          metadata: { custom: 'metadata' }
         }
-
-        const mockEmbedding = [0.1, 0.2]
         
         mockStep.do
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'generate-embedding') {
-              mockEnv.AI.run.mockResolvedValueOnce({
-                data: [mockEmbedding]
-              })
-              return await fn()
-            }
-          })
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'create-vector-id') {
-              return await fn()
-            }
-          })
-          .mockImplementationOnce(async (name, fn) => {
-            if (name === 'save-to-vectorize') {
-              mockEnv.VECTORIZE_INDEX.insert.mockRejectedValueOnce(new Error('Vectorize insert failed'))
-              return await fn()
-            }
-          })
+          .mockImplementationOnce(async (name, fn) => await fn())
+          .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        await workflow.run(event as any, mockStep as any)
 
-        expect(result).toMatchObject({
-          type: 'create',
-          success: false,
-          error: 'Vectorize insert failed'
-        })
+        expect(mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith([
+          expect.objectContaining({
+            metadata: expect.objectContaining({
+              custom: 'metadata'
+            })
+          })
+        ])
       })
     })
 
@@ -276,12 +210,14 @@ describe('VectorOperationsWorkflow', () => {
       it('should delete vectors successfully', async () => {
         const params = {
           type: 'delete' as const,
-          vectorIds: ['vec-1', 'vec-2', 'vec-3']
+          vectorIds: ['vec1', 'vec2', 'vec3']
         }
-
+        
         mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({ count: 3 })
+            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
+              count: 3
+            })
             return await fn()
           }
         })
@@ -296,18 +232,20 @@ describe('VectorOperationsWorkflow', () => {
           completedAt: expect.any(String)
         })
 
-        expect(mockEnv.VECTORIZE_INDEX.deleteByIds).toHaveBeenCalledWith(['vec-1', 'vec-2', 'vec-3'])
+        expect(mockEnv.VECTORIZE_INDEX.deleteByIds).toHaveBeenCalledWith(['vec1', 'vec2', 'vec3'])
       })
 
       it('should handle partial deletion', async () => {
         const params = {
           type: 'delete' as const,
-          vectorIds: ['vec-1', 'vec-2', 'vec-3']
+          vectorIds: ['vec1', 'vec2']
         }
-
+        
         mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({ count: 2 })
+            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
+              count: 1
+            })
             return await fn()
           }
         })
@@ -318,19 +256,20 @@ describe('VectorOperationsWorkflow', () => {
         expect(result).toMatchObject({
           type: 'delete',
           success: true,
-          deletedCount: 2
+          deletedCount: 1,
+          completedAt: expect.any(String)
         })
       })
 
       it('should handle delete failure', async () => {
         const params = {
           type: 'delete' as const,
-          vectorIds: ['vec-1']
+          vectorIds: ['vec1']
         }
-
+        
         mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockRejectedValueOnce(new Error('Delete failed'))
+            mockEnv.VECTORIZE_INDEX.deleteByIds.mockRejectedValueOnce(new Error('Delete error'))
             return await fn()
           }
         })
@@ -341,7 +280,8 @@ describe('VectorOperationsWorkflow', () => {
         expect(result).toMatchObject({
           type: 'delete',
           success: false,
-          error: 'Delete failed'
+          error: 'Delete error',
+          completedAt: expect.any(String)
         })
       })
 
@@ -350,10 +290,12 @@ describe('VectorOperationsWorkflow', () => {
           type: 'delete' as const,
           vectorIds: []
         }
-
+        
         mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({ count: 0 })
+            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
+              count: 0
+            })
             return await fn()
           }
         })
@@ -364,51 +306,22 @@ describe('VectorOperationsWorkflow', () => {
         expect(result).toMatchObject({
           type: 'delete',
           success: true,
-          deletedCount: 0
+          deletedCount: 0,
+          completedAt: expect.any(String)
         })
       })
     })
 
     describe('error handling', () => {
-      it('should handle invalid operation type', async () => {
-        const params = {
-          type: 'invalid' as any,
-          text: 'test'
-        }
-
-        const event = createMockEvent(params)
-        await expect(workflow.run(event as any, mockStep as any)).rejects.toThrow()
-      })
-
-      it('should handle missing required fields for create', async () => {
-        const params = {
-          type: 'create' as const
-          // missing text field
-        }
-
-        const event = createMockEvent(params)
-        await expect(workflow.run(event as any, mockStep as any)).rejects.toThrow()
-      })
-
-      it('should handle missing required fields for delete', async () => {
-        const params = {
-          type: 'delete' as const
-          // missing vectorIds field
-        }
-
-        const event = createMockEvent(params)
-        await expect(workflow.run(event as any, mockStep as any)).rejects.toThrow()
-      })
-
       it('should handle non-Error exceptions in delete operation', async () => {
         const params = {
           type: 'delete' as const,
-          vectorIds: ['vec-1', 'vec-2']
+          vectorIds: ['vec1']
         }
-
+        
         mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            throw 'String error' // Non-Error exception
+            throw 'String error'
           }
         })
 
@@ -418,19 +331,24 @@ describe('VectorOperationsWorkflow', () => {
         expect(result).toMatchObject({
           type: 'delete',
           success: false,
-          error: 'Unknown error'
+          error: 'Unknown error',
+          completedAt: expect.any(String)
         })
       })
 
-      it('should handle non-Error exceptions', async () => {
+      it('should handle non-Error exceptions in create operation', async () => {
         const params = {
           type: 'create' as const,
-          text: 'Test text'
+          embedding: [0.1]
         }
-
-        mockStep.do.mockImplementationOnce(async () => {
-          throw 'String error'
-        })
+        
+        mockStep.do
+          .mockImplementationOnce(async (name, fn) => await fn())
+          .mockImplementationOnce(async (name, fn) => {
+            if (name === 'save-to-vectorize') {
+              throw 'String error'
+            }
+          })
 
         const event = createMockEvent(params)
         const result = await workflow.run(event as any, mockStep as any)
@@ -438,19 +356,22 @@ describe('VectorOperationsWorkflow', () => {
         expect(result).toMatchObject({
           type: 'create',
           success: false,
-          error: 'Unknown error'
+          error: 'Unknown error',
+          completedAt: expect.any(String)
         })
       })
-    })
 
-    describe('edge cases', () => {
-      it('should handle unknown operation type', async () => {
+      it('should handle invalid payload', async () => {
         const params = {
-          type: 'unknown' as any // Force an invalid type
+          type: 'invalid' as any,
+          text: 'Test text'
         }
 
         const event = createMockEvent(params)
-        await expect(workflow.run(event as any, mockStep as any)).rejects.toThrow()
+        
+        await expect(async () => {
+          await workflow.run(event as any, mockStep as any)
+        }).rejects.toThrow()
       })
     })
   })

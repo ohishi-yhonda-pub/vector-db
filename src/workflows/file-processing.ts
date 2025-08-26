@@ -146,11 +146,30 @@ KEYWORDS: [searchable keywords]`
           const chunk = chunks[i]
           const vectorId = `${fileType}_${params.fileName}_${chunk.type}_${i}_${timestamp}`
           
+          // Step 1: Generate embedding for the chunk text
+          const embeddingWorkflow = await this.env.EMBEDDINGS_WORKFLOW.create({
+            id: `embed_${vectorId}`,
+            params: {
+              text: chunk.text,
+              model: this.env.DEFAULT_EMBEDDING_MODEL
+            }
+          })
+          
+          // Wait for embedding to complete
+          const embeddingResult = await embeddingWorkflow.get()
+          
+          if (!embeddingResult.success || !embeddingResult.embedding) {
+            console.error(`Failed to generate embedding for chunk ${i}: ${embeddingResult.error}`)
+            continue // Skip this chunk if embedding fails
+          }
+          
+          // Step 2: Save vector with embedding
           await this.env.VECTOR_OPERATIONS_WORKFLOW.create({
             id: vectorId,
             params: {
               type: 'create',
-              text: chunk.text,
+              embedding: embeddingResult.embedding,
+              vectorId,
               namespace: params.namespace || `${fileType}-uploads`,
               metadata: {
                 ...params.metadata,
@@ -161,6 +180,8 @@ KEYWORDS: [searchable keywords]`
                 chunkIndex: i,
                 totalChunks: chunks.length,
                 hasExtractedText: fileAnalysis.hasText,
+                text: chunk.text,  // Store original text in metadata
+                model: embeddingResult.model,
                 analyzedAt: new Date().toISOString()
               }
             }
