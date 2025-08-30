@@ -1,50 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import { fileStatusRoute, fileStatusHandler } from '../../../../src/routes/api/files/status'
 import { FileProcessingResultSchema } from '../../../../src/schemas/file-upload.schema'
-
-// Mock Vector Manager Durable Object
-const mockVectorManager = {
-  getFileProcessingJob: vi.fn(),
-  getFileProcessingWorkflowStatus: vi.fn()
-}
-
-// Mock Durable Object namespace
-const mockVectorCacheNamespace = {
-  idFromName: vi.fn().mockReturnValue('mock-id'),
-  get: vi.fn().mockReturnValue(mockVectorManager)
-}
+import { setupFileProcessingRouteTest, createMockRequest } from '../../test-helpers'
 
 describe('File Status Route', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupFileProcessingRouteTest>
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: '',
-      AI: {} as Ai,
-      VECTORIZE_INDEX: {} as VectorizeIndex,
-      VECTOR_CACHE: mockVectorCacheNamespace as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as D1Database,
-      EMBEDDINGS_WORKFLOW: {} as Workflow,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as Workflow,
-      VECTOR_OPERATIONS_WORKFLOW: {} as Workflow,
-      FILE_PROCESSING_WORKFLOW: {} as Workflow,
-      NOTION_SYNC_WORKFLOW: {} as Workflow
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(fileStatusRoute, fileStatusHandler)
+    testSetup = setupFileProcessingRouteTest()
+    testSetup.app.openapi(fileStatusRoute, fileStatusHandler)
   })
 
   describe('GET /files/status/{workflowId}', () => {
@@ -60,19 +24,19 @@ describe('File Status Route', () => {
         status: 'running'
       }
 
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
-      mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
+      testSetup.mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
 
-      const request = new Request('http://localhost/files/status/workflow-456', {
+      const request = createMockRequest('http://localhost/files/status/workflow-456', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockVectorManager.getFileProcessingJob).toHaveBeenCalledWith('workflow-456')
-      expect(mockVectorManager.getFileProcessingWorkflowStatus).toHaveBeenCalledWith('workflow-456')
+      expect(testSetup.mockVectorManager.getFileProcessingJob).toHaveBeenCalledWith('workflow-456')
+      expect(testSetup.mockVectorManager.getFileProcessingWorkflowStatus).toHaveBeenCalledWith('workflow-456')
       expect(result).toEqual({
         success: true,
         data: {
@@ -107,14 +71,14 @@ describe('File Status Route', () => {
         output: mockResult
       }
 
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
-      mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
+      testSetup.mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
 
-      const request = new Request('http://localhost/files/status/workflow-completed', {
+      const request = createMockRequest('http://localhost/files/status/workflow-completed', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -143,14 +107,14 @@ describe('File Status Route', () => {
         error: 'Workflow error'
       }
 
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
-      mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
+      testSetup.mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
 
-      const request = new Request('http://localhost/files/status/workflow-failed', {
+      const request = createMockRequest('http://localhost/files/status/workflow-failed', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -178,14 +142,14 @@ describe('File Status Route', () => {
         error: 'Status error'
       }
 
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
-      mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
+      testSetup.mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
 
-      const request = new Request('http://localhost/files/status/workflow-error', {
+      const request = createMockRequest('http://localhost/files/status/workflow-error', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -205,14 +169,14 @@ describe('File Status Route', () => {
         status: 'unknown'
       }
 
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
-      mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
+      testSetup.mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
 
-      const request = new Request('http://localhost/files/status/workflow-unknown', {
+      const request = createMockRequest('http://localhost/files/status/workflow-unknown', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -220,13 +184,13 @@ describe('File Status Route', () => {
     })
 
     it('should handle job not found', async () => {
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(null)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(null)
 
-      const request = new Request('http://localhost/files/status/workflow-notfound', {
+      const request = createMockRequest('http://localhost/files/status/workflow-notfound', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
@@ -238,13 +202,13 @@ describe('File Status Route', () => {
     })
 
     it('should handle workflow not found error', async () => {
-      mockVectorManager.getFileProcessingJob.mockRejectedValue(new Error('Workflow not found'))
+      testSetup.mockVectorManager.getFileProcessingJob.mockRejectedValue(new Error('Workflow not found'))
 
-      const request = new Request('http://localhost/files/status/workflow-notfound2', {
+      const request = createMockRequest('http://localhost/files/status/workflow-notfound2', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
@@ -256,13 +220,13 @@ describe('File Status Route', () => {
     })
 
     it('should handle other errors', async () => {
-      mockVectorManager.getFileProcessingJob.mockRejectedValue(new Error('Database error'))
+      testSetup.mockVectorManager.getFileProcessingJob.mockRejectedValue(new Error('Database error'))
 
-      const request = new Request('http://localhost/files/status/workflow-error', {
+      const request = createMockRequest('http://localhost/files/status/workflow-error', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -274,13 +238,13 @@ describe('File Status Route', () => {
     })
 
     it('should handle non-Error exceptions', async () => {
-      mockVectorManager.getFileProcessingJob.mockRejectedValue('String error')
+      testSetup.mockVectorManager.getFileProcessingJob.mockRejectedValue('String error')
 
-      const request = new Request('http://localhost/files/status/workflow-string-error', {
+      const request = createMockRequest('http://localhost/files/status/workflow-string-error', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -288,11 +252,11 @@ describe('File Status Route', () => {
     })
 
     it('should validate empty workflowId', async () => {
-      const request = new Request('http://localhost/files/status/', {
+      const request = createMockRequest('http://localhost/files/status/', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(404) // Route not found
     })
@@ -309,14 +273,14 @@ describe('File Status Route', () => {
         status: 'running'
       }
 
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
-      mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
+      testSetup.mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
 
-      const request = new Request('http://localhost/files/status/workflow-mix', {
+      const request = createMockRequest('http://localhost/files/status/workflow-mix', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -335,18 +299,18 @@ describe('File Status Route', () => {
         status: 'running'
       }
 
-      mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
-      mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
+      testSetup.mockVectorManager.getFileProcessingJob.mockResolvedValue(mockJob)
+      testSetup.mockVectorManager.getFileProcessingWorkflowStatus.mockResolvedValue(mockStatus)
 
-      const request = new Request('http://localhost/files/status/workflow%2Dspecial%2D123', {
+      const request = createMockRequest('http://localhost/files/status/workflow%2Dspecial%2D123', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockVectorManager.getFileProcessingJob).toHaveBeenCalledWith('workflow-special-123')
+      expect(testSetup.mockVectorManager.getFileProcessingJob).toHaveBeenCalledWith('workflow-special-123')
     })
   })
 })

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import searchRoutes from '../../../../src/routes/api/search/index'
+import { setupSearchRouteTest } from '../../test-helpers/test-scenarios'
 
 // Mock all route handlers
 vi.mock('../../../../src/routes/api/search/vectors', () => ({
@@ -19,31 +19,31 @@ vi.mock('../../../../src/routes/api/search/similar', () => ({
 }))
 
 describe('Search Routes Index', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
+  let testSetup: ReturnType<typeof setupSearchRouteTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi = vi.fn()
+    testSetup = setupSearchRouteTest()
+    testSetup.app.openapi = vi.fn()
   })
 
   it('should register all search routes', () => {
-    searchRoutes(app)
+    searchRoutes(testSetup.app)
 
-    expect(app.openapi).toHaveBeenCalledTimes(3)
+    expect(testSetup.app.openapi).toHaveBeenCalledTimes(3)
     
     // Check each route was registered
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/search' }),
       expect.any(Function)
     )
     
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/search/semantic' }),
       expect.any(Function)
     )
     
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/search/similar' }),
       expect.any(Function)
     )

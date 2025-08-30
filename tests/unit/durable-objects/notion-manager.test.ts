@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setupDurableObjectTest } from '../test-helpers'
 
 // Mock the Agent class first
 vi.mock('agents', () => ({
@@ -81,34 +82,29 @@ import { eq } from 'drizzle-orm'
 
 describe('NotionManager Durable Object', () => {
   let notionManager: NotionManager
-  let mockCtx: any
-  let mockEnv: any
+  let testSetup: ReturnType<typeof setupDurableObjectTest>
   let mockWorkflow: any
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    testSetup = setupDurableObjectTest()
     
     mockWorkflow = {
       id: 'workflow-123',
       status: vi.fn().mockResolvedValue({ status: 'running' })
     }
 
-    mockEnv = {
-      NOTION_API_KEY: 'test-notion-key',
-      NOTION_SYNC_WORKFLOW: {
-        create: vi.fn().mockResolvedValue(mockWorkflow),
-        get: vi.fn().mockResolvedValue(mockWorkflow)
-      }
+    testSetup.mockEnv.NOTION_API_KEY = 'test-notion-key'
+    testSetup.mockEnv.NOTION_SYNC_WORKFLOW = {
+      create: vi.fn().mockResolvedValue(mockWorkflow),
+      get: vi.fn().mockResolvedValue(mockWorkflow)
     }
 
-    mockCtx = {
-      storage: {
-        get: vi.fn(),
-        put: vi.fn()
-      }
+    testSetup.mockCtx.storage = {
+      get: vi.fn(),
+      put: vi.fn()
     }
 
-    notionManager = new NotionManager(mockCtx, mockEnv)
+    notionManager = new NotionManager(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   describe('constructor', () => {
@@ -138,7 +134,7 @@ describe('NotionManager Durable Object', () => {
       const pageId = 'page-123'
       const result = await notionManager.createSyncJob(pageId)
 
-      expect(mockEnv.NOTION_SYNC_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.NOTION_SYNC_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining(`notion_sync_${pageId}_`),
         params: {
           pageId,
@@ -169,7 +165,7 @@ describe('NotionManager Durable Object', () => {
 
       const result = await notionManager.createSyncJob(pageId, options)
 
-      expect(mockEnv.NOTION_SYNC_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.NOTION_SYNC_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining(`notion_sync_${pageId}_`),
         params: {
           pageId,
@@ -547,12 +543,12 @@ describe('NotionManager Durable Object', () => {
 
       const status = await notionManager.getWorkflowStatus('workflow-123')
       
-      expect(mockEnv.NOTION_SYNC_WORKFLOW.get).toHaveBeenCalledWith('workflow-123')
+      expect(testSetup.mockEnv.NOTION_SYNC_WORKFLOW.get).toHaveBeenCalledWith('workflow-123')
       expect(status).toEqual(expectedStatus)
     })
 
     it('should handle errors gracefully', async () => {
-      mockEnv.NOTION_SYNC_WORKFLOW.get.mockRejectedValueOnce(new Error('Not found'))
+      testSetup.mockEnv.NOTION_SYNC_WORKFLOW.get.mockRejectedValueOnce(new Error('Not found'))
 
       const status = await notionManager.getWorkflowStatus('non-existent')
       
@@ -562,8 +558,8 @@ describe('NotionManager Durable Object', () => {
 
   describe('getNotionService', () => {
     it('should throw error if NOTION_API_KEY is not configured', () => {
-      delete mockEnv.NOTION_API_KEY
-      const manager = new NotionManager(mockCtx, mockEnv)
+      delete testSetup.mockEnv.NOTION_API_KEY
+      const manager = new NotionManager(testSetup.mockCtx, testSetup.mockEnv)
 
       expect(() => (manager as any).getNotionService()).toThrow('Notion API token not configured')
     })

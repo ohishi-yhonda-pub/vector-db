@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import { semanticSearchRoute, semanticSearchHandler } from '../../../../src/routes/api/search/semantic'
 import { VectorizeService } from '../../../../src/services'
+import { setupSearchRouteTest } from '../../test-helpers/test-scenarios'
 
 // Mock VectorizeService
 const mockVectorizeQuery = vi.fn()
@@ -12,42 +12,23 @@ vi.mock('../../../../src/services', () => ({
 }))
 
 describe('Semantic Search Route', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupSearchRouteTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
     
-    // Mock AI.run for embeddings
-    const mockAIRun = vi.fn()
+    testSetup = setupSearchRouteTest()
     
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: '',
-      AI: {
-        run: mockAIRun
-      } as any,
-      VECTORIZE_INDEX: {
-        query: mockVectorizeQuery
-      } as any,
-      VECTOR_CACHE: {} as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as any,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as any,
-      VECTOR_OPERATIONS_WORKFLOW: {} as any,
-      FILE_PROCESSING_WORKFLOW: {} as any,
-      NOTION_SYNC_WORKFLOW: {} as any,
-      EMBEDDINGS_WORKFLOW: {} as any
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(semanticSearchRoute, semanticSearchHandler)
+    // Add AI.run mock for embeddings
+    const mockAIRun = vi.fn()
+    testSetup.mockEnv.AI = {
+      run: mockAIRun
+    } as any
+    
+    // Override the VECTORIZE_INDEX query to use our mock
+    testSetup.mockVectorizeIndex.query = mockVectorizeQuery
+    
+    testSetup.app.openapi(semanticSearchRoute, semanticSearchHandler)
   })
 
   describe('GET /search/semantic', () => {
@@ -60,7 +41,7 @@ describe('Semantic Search Route', () => {
         ]
       }
 
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: [mockEmbedding]
       })
       mockVectorizeQuery.mockResolvedValue(mockSearchResults)
@@ -69,11 +50,11 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', { text: 'test search query' })
+      expect(testSetup.mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', { text: 'test search query' })
       expect(mockVectorizeQuery).toHaveBeenCalledWith(mockEmbedding, {
         topK: 5,
         namespace: undefined,
@@ -102,7 +83,7 @@ describe('Semantic Search Route', () => {
         ]
       }
 
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: [mockEmbedding]
       })
       mockVectorizeQuery.mockResolvedValue(mockSearchResults)
@@ -111,7 +92,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -127,7 +108,7 @@ describe('Semantic Search Route', () => {
       const mockEmbedding = [0.1, 0.2]
       const mockSearchResults = { matches: [] }
 
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: [mockEmbedding]
       })
       mockVectorizeQuery.mockResolvedValue(mockSearchResults)
@@ -136,7 +117,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -153,7 +134,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
@@ -163,7 +144,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
@@ -173,7 +154,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
@@ -183,13 +164,13 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
 
     it('should handle AI embedding generation failure', async () => {
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: []
       })
 
@@ -197,7 +178,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -209,7 +190,7 @@ describe('Semantic Search Route', () => {
     })
 
     it('should handle AI run without data property', async () => {
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         error: 'AI error'
       })
 
@@ -217,7 +198,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -227,7 +208,7 @@ describe('Semantic Search Route', () => {
     it('should handle vectorize query errors', async () => {
       const mockEmbedding = [0.1, 0.2, 0.3]
 
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: [mockEmbedding]
       })
       mockVectorizeQuery.mockRejectedValue(new Error('Vectorize search failed'))
@@ -236,7 +217,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -250,7 +231,7 @@ describe('Semantic Search Route', () => {
     it('should handle non-Error exceptions', async () => {
       const mockEmbedding = [0.1, 0.2]
 
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: [mockEmbedding]
       })
       mockVectorizeQuery.mockRejectedValue('String error')
@@ -259,7 +240,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -269,7 +250,7 @@ describe('Semantic Search Route', () => {
     it('should handle empty search results', async () => {
       const mockEmbedding = [0.1, 0.2, 0.3]
 
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: [mockEmbedding]
       })
       mockVectorizeQuery.mockResolvedValue({ matches: [] })
@@ -278,7 +259,7 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -294,7 +275,7 @@ describe('Semantic Search Route', () => {
         ]
       }
 
-      ;(mockEnv.AI.run as any).mockResolvedValue({
+      ;(testSetup.mockEnv.AI.run as any).mockResolvedValue({
         data: [mockEmbedding]
       })
       mockVectorizeQuery.mockResolvedValue(mockSearchResults)
@@ -303,11 +284,11 @@ describe('Semantic Search Route', () => {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', { text: 'special&chars+test' })
+      expect(testSetup.mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', { text: 'special&chars+test' })
       expect(result.data.query).toBe('special&chars+test')
     })
   })

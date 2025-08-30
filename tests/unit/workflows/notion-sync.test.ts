@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setupWorkflowTest } from '../test-helpers'
 
 // Mock cloudflare:workers
 vi.mock('cloudflare:workers', () => ({
@@ -59,11 +60,6 @@ import { NotionService } from '../../../src/services/notion.service'
 import { getDb } from '../../../src/db'
 import { notionSyncJobs } from '../../../src/db/schema'
 
-// Mock WorkflowStep
-const mockStep = {
-  do: vi.fn()
-}
-
 // Mock WorkflowEvent
 const createMockEvent = (payload: any) => ({
   payload,
@@ -72,28 +68,25 @@ const createMockEvent = (payload: any) => ({
 
 describe('NotionSyncWorkflow', () => {
   let workflow: NotionSyncWorkflow
-  let mockEnv: any
-  let mockCtx: any
+  let testSetup: ReturnType<typeof setupWorkflowTest>
   let mockNotionService: any
   let mockVectorManager: any
 
   beforeEach(() => {
     vi.clearAllMocks()
+    testSetup = setupWorkflowTest()
     
     mockVectorManager = {
       createVectorAsync: vi.fn().mockResolvedValue({ jobId: 'vec-job-123' })
     }
     
-    mockEnv = {
-      NOTION_API_KEY: 'test-notion-key',
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      VECTOR_CACHE: {
-        idFromName: vi.fn().mockReturnValue('vector-manager-id'),
-        get: vi.fn().mockReturnValue(mockVectorManager)
-      }
+    // Add additional properties to mockEnv
+    testSetup.mockEnv.NOTION_API_KEY = 'test-notion-key'
+    testSetup.mockEnv.DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-base-en-v1.5'
+    testSetup.mockEnv.VECTOR_CACHE = {
+      idFromName: vi.fn().mockReturnValue('vector-manager-id'),
+      get: vi.fn().mockReturnValue(mockVectorManager)
     }
-
-    mockCtx = {}
 
     // Use the global mock instance
     mockNotionService = mockNotionServiceInstance
@@ -101,7 +94,7 @@ describe('NotionSyncWorkflow', () => {
     // Clear all mock calls
     Object.values(mockNotionService).forEach(fn => (fn as any).mockClear())
 
-    workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+    workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   describe('run', () => {
@@ -162,7 +155,7 @@ describe('NotionSyncWorkflow', () => {
       mockNotionService.savePageProperties.mockResolvedValueOnce(['prop-1'])
       mockNotionService.saveBlocks.mockResolvedValueOnce(undefined)
 
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -190,7 +183,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toMatchObject({
         success: true,
@@ -225,7 +218,7 @@ describe('NotionSyncWorkflow', () => {
 
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -248,7 +241,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.vectorsCreated).toBe(1) // Only property vector
     })
@@ -272,7 +265,7 @@ describe('NotionSyncWorkflow', () => {
 
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -295,7 +288,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.vectorsCreated).toBe(0)
     })
@@ -320,7 +313,7 @@ describe('NotionSyncWorkflow', () => {
 
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -333,7 +326,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.propertiesProcessed).toBe(0)
       expect(result.blocksProcessed).toBe(0)
@@ -348,7 +341,7 @@ describe('NotionSyncWorkflow', () => {
 
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(null)
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn() // Execute the callback to test the null check
@@ -361,7 +354,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toMatchObject({
         success: false,
@@ -379,14 +372,14 @@ describe('NotionSyncWorkflow', () => {
 
       mockNotionService.fetchPageFromNotion.mockRejectedValueOnce(new Error('API Error'))
       
-      mockStep.do.mockImplementationOnce(async (name: string, fn: () => any) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name: string, fn: () => any) => {
         if (name === 'fetch-and-save-page') {
           throw new Error('API Error')
         }
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toMatchObject({
         success: false,
@@ -400,7 +393,7 @@ describe('NotionSyncWorkflow', () => {
         notionToken: 'test-token'
       }
 
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             throw 'String error' // Non-Error exception
@@ -413,7 +406,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toMatchObject({
         success: false,
@@ -461,7 +454,7 @@ describe('NotionSyncWorkflow', () => {
 
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -479,7 +472,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.propertiesProcessed).toBe(5) // Title, Status, Tags, Checkbox, Formula
       expect(mockNotionService.savePageProperties).toHaveBeenCalled()
@@ -536,7 +529,7 @@ describe('NotionSyncWorkflow', () => {
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
       mockNotionService.fetchBlocksFromNotion.mockResolvedValueOnce(mockBlocks)
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -554,7 +547,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.blocksProcessed).toBe(4) // all blocks are counted
       expect(mockNotionService.saveBlocks).toHaveBeenCalled()
@@ -581,7 +574,7 @@ describe('NotionSyncWorkflow', () => {
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
       mockNotionService.fetchBlocksFromNotion.mockRejectedValueOnce(new Error('Blocks fetch failed'))
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -609,7 +602,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       // Should fail when blocks fetch fails
       expect(result.success).toBe(false)
@@ -652,7 +645,7 @@ describe('NotionSyncWorkflow', () => {
       mockNotionService.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
       mockNotionService.fetchBlocksFromNotion.mockResolvedValueOnce(mockBlocks)
       
-      mockStep.do
+      testSetup.mockStep.do
         .mockImplementationOnce(async (name: string, fn: () => any) => {
           if (name === 'fetch-and-save-page') {
             return await fn()
@@ -670,7 +663,7 @@ describe('NotionSyncWorkflow', () => {
         })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.blocksProcessed).toBe(1)
       expect(result.vectorsCreated).toBe(2) // 1 title + 1 table_row block
@@ -679,7 +672,7 @@ describe('NotionSyncWorkflow', () => {
 
   describe('extractPlainTextFromBlock', () => {
     it('should extract text from table_row blocks', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'table_row',
         table_row: {
@@ -696,7 +689,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should handle table_row with empty cells', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'table_row',
         table_row: {
@@ -713,7 +706,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should handle rich text without plain_text', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'paragraph',
         paragraph: {
@@ -730,7 +723,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should handle code blocks', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'code',
         code: {
@@ -744,7 +737,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should return empty string for blocks without content', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'divider',
         divider: {}
@@ -755,7 +748,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should return empty string for unsupported block types', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'unsupported_type',
         unsupported_type: {
@@ -768,7 +761,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should handle block without content property', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'missing_content',
         id: 'block-id'
@@ -779,7 +772,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should handle malformed rich text block', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'paragraph',
         paragraph: {
@@ -792,7 +785,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should handle malformed code block', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'code',
         code: {
@@ -805,7 +798,7 @@ describe('NotionSyncWorkflow', () => {
     })
 
     it('should handle malformed table_row block', () => {
-      const workflow = new NotionSyncWorkflow(mockCtx, mockEnv)
+      const workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
       const block = {
         type: 'table_row',
         table_row: {

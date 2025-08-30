@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import notionRoutes from '../../../../src/routes/api/notion/index'
+import { setupNotionRouteTest } from '../../test-helpers'
 
 // Mock all route handlers
 vi.mock('../../../../src/routes/api/notion/retrieve-page', () => ({
@@ -29,41 +29,40 @@ vi.mock('../../../../src/routes/api/notion/bulk-sync', () => ({
 }))
 
 describe('Notion Routes Index', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
+  let testSetup: ReturnType<typeof setupNotionRouteTest>
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi = vi.fn()
+    testSetup = setupNotionRouteTest()
+    testSetup.app.openapi = vi.fn()
   })
 
   it('should register all notion routes', () => {
-    notionRoutes(app)
+    notionRoutes(testSetup.app)
 
-    expect(app.openapi).toHaveBeenCalledTimes(5)
+    expect(testSetup.app.openapi).toHaveBeenCalledTimes(5)
     
     // Check each route was registered
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/notion/pages' }),
       expect.any(Function)
     )
     
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/notion/pages/{pageId}' }),
       expect.any(Function)
     )
     
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/notion/pages/{pageId}/sync' }),
       expect.any(Function)
     )
     
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/notion/pages/bulk-sync' }),
       expect.any(Function)
     )
     
-    expect(app.openapi).toHaveBeenCalledWith(
+    expect(testSetup.app.openapi).toHaveBeenCalledWith(
       expect.objectContaining({ path: '/notion/pages/{pageId}/blocks' }),
       expect.any(Function)
     )

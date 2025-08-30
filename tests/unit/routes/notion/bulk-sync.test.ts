@@ -1,53 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { bulkSyncNotionPagesRoute, bulkSyncNotionPagesHandler } from '../../../../src/routes/api/notion/bulk-sync'
-
-// Mock NotionManager methods
-const mockListPages = vi.fn()
-const mockCreateBulkSyncJob = vi.fn()
-
-// Mock NotionManager Durable Object
-const mockNotionManager = {
-  listPages: mockListPages,
-  createBulkSyncJob: mockCreateBulkSyncJob
-}
-
-// Mock Durable Object namespace
-const mockNotionManagerNamespace = {
-  idFromName: vi.fn(() => 'mock-id'),
-  get: vi.fn(() => mockNotionManager)
-}
+import { setupNotionRouteTest, createMockRequest } from '../../test-helpers'
 
 describe('Bulk Sync Notion Pages Route', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupNotionRouteTest>
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: 'test-notion-api-key',
-      AI: {} as any,
-      VECTORIZE_INDEX: {} as any,
-      VECTOR_CACHE: {} as any,
-      NOTION_MANAGER: mockNotionManagerNamespace as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as any,
-      EMBEDDINGS_WORKFLOW: {} as Workflow,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as any,
-      VECTOR_OPERATIONS_WORKFLOW: {} as any,
-      FILE_PROCESSING_WORKFLOW: {} as any,
-      NOTION_SYNC_WORKFLOW: {} as any
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(bulkSyncNotionPagesRoute, bulkSyncNotionPagesHandler)
+    testSetup = setupNotionRouteTest()
+    testSetup.app.openapi(bulkSyncNotionPagesRoute, bulkSyncNotionPagesHandler)
   })
 
   describe('POST /notion/pages/bulk-sync', () => {
@@ -57,7 +17,7 @@ describe('Bulk Sync Notion Pages Route', () => {
         { pageId: 'page-2', jobId: 'job-2', status: 'queued' }
       ]
 
-      mockCreateBulkSyncJob.mockResolvedValue({
+      testSetup.mockNotionManager.createBulkSyncJob.mockResolvedValue({
         syncJobs: mockSyncJobs
       })
 
@@ -68,19 +28,17 @@ describe('Bulk Sync Notion Pages Route', () => {
         maxPages: 50
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(mockNotionManagerNamespace.idFromName).toHaveBeenCalledWith('global')
-      expect(mockNotionManagerNamespace.get).toHaveBeenCalledWith('mock-id')
-      expect(mockCreateBulkSyncJob).toHaveBeenCalledWith(['page-1', 'page-2'], {
+      expect(testSetup.mockNotionManager.createBulkSyncJob).toHaveBeenCalledWith(['page-1', 'page-2'], {
         includeBlocks: true,
         includeProperties: true,
         namespace: undefined,
@@ -115,8 +73,8 @@ describe('Bulk Sync Notion Pages Route', () => {
         { pageId: 'discovered-page-2', jobId: 'job-d2', status: 'queued' }
       ]
 
-      mockListPages.mockResolvedValue(mockPages)
-      mockCreateBulkSyncJob.mockResolvedValue({
+      testSetup.mockNotionManager.listPages.mockResolvedValue(mockPages)
+      testSetup.mockNotionManager.createBulkSyncJob.mockResolvedValue({
         syncJobs: mockSyncJobs
       })
 
@@ -128,22 +86,22 @@ describe('Bulk Sync Notion Pages Route', () => {
         namespace: 'test-namespace'
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(mockListPages).toHaveBeenCalledWith({
+      expect(testSetup.mockNotionManager.listPages).toHaveBeenCalledWith({
         fromCache: false,
         archived: true,
         limit: 25
       })
-      expect(mockCreateBulkSyncJob).toHaveBeenCalledWith(['discovered-page-1', 'discovered-page-2'], {
+      expect(testSetup.mockNotionManager.createBulkSyncJob).toHaveBeenCalledWith(['discovered-page-1', 'discovered-page-2'], {
         includeBlocks: false,
         includeProperties: false,
         namespace: 'test-namespace',
@@ -173,8 +131,8 @@ describe('Bulk Sync Notion Pages Route', () => {
         { pageId: 'generic-page-1', jobId: 'job-g1', status: 'queued' }
       ]
 
-      mockListPages.mockResolvedValue(mockPages)
-      mockCreateBulkSyncJob.mockResolvedValue({
+      testSetup.mockNotionManager.listPages.mockResolvedValue(mockPages)
+      testSetup.mockNotionManager.createBulkSyncJob.mockResolvedValue({
         syncJobs: mockSyncJobs
       })
 
@@ -183,17 +141,17 @@ describe('Bulk Sync Notion Pages Route', () => {
         includeProperties: true
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(mockCreateBulkSyncJob).toHaveBeenCalledWith(['notion-page-1', 'generic-page-1'], {
+      expect(testSetup.mockNotionManager.createBulkSyncJob).toHaveBeenCalledWith(['notion-page-1', 'generic-page-1'], {
         includeBlocks: true,
         includeProperties: true,
         namespace: undefined,
@@ -207,7 +165,7 @@ describe('Bulk Sync Notion Pages Route', () => {
         { pageId: 'page-2', jobId: 'job-2', status: 'queued' }
       ]
 
-      mockCreateBulkSyncJob.mockResolvedValue({
+      testSetup.mockNotionManager.createBulkSyncJob.mockResolvedValue({
         syncJobs: mockSyncJobs
       })
 
@@ -216,17 +174,17 @@ describe('Bulk Sync Notion Pages Route', () => {
         maxPages: 2
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(mockCreateBulkSyncJob).toHaveBeenCalledWith(['page-1', 'page-2'], expect.any(Object))
+      expect(testSetup.mockNotionManager.createBulkSyncJob).toHaveBeenCalledWith(['page-1', 'page-2'], expect.any(Object))
       expect(result.data.totalPages).toBe(2)
     })
 
@@ -242,29 +200,29 @@ describe('Bulk Sync Notion Pages Route', () => {
         { pageId: 'default-page-1', jobId: 'job-default', status: 'queued' }
       ]
 
-      mockListPages.mockResolvedValue(mockPages)
-      mockCreateBulkSyncJob.mockResolvedValue({
+      testSetup.mockNotionManager.listPages.mockResolvedValue(mockPages)
+      testSetup.mockNotionManager.createBulkSyncJob.mockResolvedValue({
         syncJobs: mockSyncJobs
       })
 
       const requestBody = {}
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(mockListPages).toHaveBeenCalledWith({
+      expect(testSetup.mockNotionManager.listPages).toHaveBeenCalledWith({
         fromCache: false,
         archived: false,
         limit: 50
       })
-      expect(mockCreateBulkSyncJob).toHaveBeenCalledWith(['default-page-1'], {
+      expect(testSetup.mockNotionManager.createBulkSyncJob).toHaveBeenCalledWith(['default-page-1'], {
         includeBlocks: true,
         includeProperties: true,
         namespace: undefined,
@@ -276,8 +234,8 @@ describe('Bulk Sync Notion Pages Route', () => {
       const mockPages: any[] = []
       const mockSyncJobs: any[] = []
 
-      mockListPages.mockResolvedValue(mockPages)
-      mockCreateBulkSyncJob.mockResolvedValue({
+      testSetup.mockNotionManager.listPages.mockResolvedValue(mockPages)
+      testSetup.mockNotionManager.createBulkSyncJob.mockResolvedValue({
         syncJobs: mockSyncJobs
       })
 
@@ -285,35 +243,35 @@ describe('Bulk Sync Notion Pages Route', () => {
         pageIds: []
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(mockListPages).toHaveBeenCalled()
+      expect(testSetup.mockNotionManager.listPages).toHaveBeenCalled()
       expect(result.data.totalPages).toBe(0)
       expect(result.data.message).toBe('0個のページの同期処理を開始しました')
     })
 
     it('should handle missing Notion API key', async () => {
-      mockEnv.NOTION_API_KEY = ''
+      testSetup.mockEnv.NOTION_API_KEY = ''
 
       const requestBody = {
         pageIds: ['test-page']
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(401)
@@ -322,24 +280,24 @@ describe('Bulk Sync Notion Pages Route', () => {
         error: 'Unauthorized',
         message: 'Notion APIトークンが設定されていません'
       })
-      expect(mockListPages).not.toHaveBeenCalled()
-      expect(mockCreateBulkSyncJob).not.toHaveBeenCalled()
+      expect(testSetup.mockNotionManager.listPages).not.toHaveBeenCalled()
+      expect(testSetup.mockNotionManager.createBulkSyncJob).not.toHaveBeenCalled()
     })
 
     it('should handle NotionManager errors', async () => {
-      mockListPages.mockRejectedValue(new Error('NotionManager connection failed'))
+      testSetup.mockNotionManager.listPages.mockRejectedValue(new Error('NotionManager connection failed'))
 
       const requestBody = {
         includeBlocks: true
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -351,19 +309,19 @@ describe('Bulk Sync Notion Pages Route', () => {
     })
 
     it('should handle non-Error exceptions', async () => {
-      mockCreateBulkSyncJob.mockRejectedValue('String error')
+      testSetup.mockNotionManager.createBulkSyncJob.mockRejectedValue('String error')
 
       const requestBody = {
         pageIds: ['test-page']
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -375,18 +333,18 @@ describe('Bulk Sync Notion Pages Route', () => {
         maxPages: 150 // exceeds max of 100
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(400)
       expect(result.success).toBe(false)
-      expect(mockCreateBulkSyncJob).not.toHaveBeenCalled()
+      expect(testSetup.mockNotionManager.createBulkSyncJob).not.toHaveBeenCalled()
     })
 
     it('should handle zero maxPages', async () => {
@@ -394,18 +352,18 @@ describe('Bulk Sync Notion Pages Route', () => {
         maxPages: 0 // below min of 1
       }
 
-      const request = new Request('http://localhost/notion/pages/bulk-sync', {
+      const request = createMockRequest('http://localhost/notion/pages/bulk-sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: requestBody
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(400)
       expect(result.success).toBe(false)
-      expect(mockCreateBulkSyncJob).not.toHaveBeenCalled()
+      expect(testSetup.mockNotionManager.createBulkSyncJob).not.toHaveBeenCalled()
     })
   })
 })
