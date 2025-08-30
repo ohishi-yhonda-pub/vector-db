@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setupWorkflowTest } from '../test-helpers'
 
 // Mock cloudflare:workers
 vi.mock('cloudflare:workers', () => ({
@@ -12,11 +13,6 @@ vi.mock('cloudflare:workers', () => ({
 // Import after mocking
 import { EmbeddingsWorkflow } from '../../../src/workflows/embeddings'
 
-// Mock WorkflowStep
-const mockStep = {
-  do: vi.fn()
-}
-
 // Mock WorkflowEvent
 const createMockEvent = (payload: any) => ({
   payload,
@@ -25,22 +21,12 @@ const createMockEvent = (payload: any) => ({
 
 describe('EmbeddingsWorkflow', () => {
   let workflow: EmbeddingsWorkflow
-  let mockEnv: any
-  let mockCtx: any
+  let testSetup: ReturnType<typeof setupWorkflowTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    mockEnv = {
-      AI: {
-        run: vi.fn()
-      },
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5'
-    }
-
-    mockCtx = {}
-
-    workflow = new EmbeddingsWorkflow(mockCtx, mockEnv)
+    testSetup = setupWorkflowTest()
+    workflow = new EmbeddingsWorkflow(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   describe('run', () => {
@@ -51,9 +37,9 @@ describe('EmbeddingsWorkflow', () => {
 
       const mockEmbedding = [0.1, 0.2, 0.3, 0.4, 0.5]
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
-          mockEnv.AI.run.mockResolvedValueOnce({
+          testSetup.mockAI.run.mockResolvedValueOnce({
             data: [mockEmbedding]
           })
           return await fn()
@@ -61,7 +47,7 @@ describe('EmbeddingsWorkflow', () => {
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toEqual({
         success: true,
@@ -71,7 +57,7 @@ describe('EmbeddingsWorkflow', () => {
         completedAt: expect.any(String)
       })
 
-      expect(mockEnv.AI.run).toHaveBeenCalledWith(
+      expect(testSetup.mockAI.run).toHaveBeenCalledWith(
         '@cf/baai/bge-base-en-v1.5',
         { text: 'Test text for embedding' }
       )
@@ -85,9 +71,9 @@ describe('EmbeddingsWorkflow', () => {
 
       const mockEmbedding = [0.1, 0.2]
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
-          mockEnv.AI.run.mockResolvedValueOnce({
+          testSetup.mockAI.run.mockResolvedValueOnce({
             data: [mockEmbedding]
           })
           return await fn()
@@ -95,10 +81,10 @@ describe('EmbeddingsWorkflow', () => {
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.model).toBe('@cf/custom/model')
-      expect(mockEnv.AI.run).toHaveBeenCalledWith(
+      expect(testSetup.mockAI.run).toHaveBeenCalledWith(
         '@cf/custom/model',
         { text: 'Test text' }
       )
@@ -109,15 +95,15 @@ describe('EmbeddingsWorkflow', () => {
         text: 'Test text'
       }
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
-          mockEnv.AI.run.mockRejectedValueOnce(new Error('AI service error'))
+          testSetup.mockAI.run.mockRejectedValueOnce(new Error('AI service error'))
           return await fn()
         }
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toEqual({
         success: false,
@@ -132,15 +118,15 @@ describe('EmbeddingsWorkflow', () => {
         text: 'Test text'
       }
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
-          mockEnv.AI.run.mockResolvedValueOnce({})
+          testSetup.mockAI.run.mockResolvedValueOnce({})
           return await fn()
         }
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toEqual({
         success: false,
@@ -155,9 +141,9 @@ describe('EmbeddingsWorkflow', () => {
         text: 'Test text'
       }
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
-          mockEnv.AI.run.mockResolvedValueOnce({
+          testSetup.mockAI.run.mockResolvedValueOnce({
             data: []
           })
           return await fn()
@@ -165,7 +151,7 @@ describe('EmbeddingsWorkflow', () => {
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toEqual({
         success: false,
@@ -180,14 +166,14 @@ describe('EmbeddingsWorkflow', () => {
         text: 'Test text'
       }
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
           throw 'String error'
         }
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toEqual({
         success: false,
@@ -202,11 +188,11 @@ describe('EmbeddingsWorkflow', () => {
         text: ''
       }
 
-      const mockEmbedding = []
+      const mockEmbedding: number[] = []
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
-          mockEnv.AI.run.mockResolvedValueOnce({
+          testSetup.mockAI.run.mockResolvedValueOnce({
             data: [mockEmbedding]
           })
           return await fn()
@@ -214,7 +200,7 @@ describe('EmbeddingsWorkflow', () => {
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.success).toBe(true)
       expect(result.embedding).toEqual([])
@@ -230,7 +216,7 @@ describe('EmbeddingsWorkflow', () => {
       const event = createMockEvent(params)
       
       await expect(async () => {
-        await workflow.run(event as any, mockStep as any)
+        await workflow.run(event as any, testSetup.mockStep as any)
       }).rejects.toThrow()
     })
 
@@ -243,7 +229,7 @@ describe('EmbeddingsWorkflow', () => {
       const event = createMockEvent(params)
       
       await expect(async () => {
-        await workflow.run(event as any, mockStep as any)
+        await workflow.run(event as any, testSetup.mockStep as any)
       }).rejects.toThrow()
     })
 
@@ -255,9 +241,9 @@ describe('EmbeddingsWorkflow', () => {
 
       const mockEmbedding = new Array(768).fill(0.1)
       
-      mockStep.do.mockImplementationOnce(async (name, fn) => {
+      testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
         if (name === 'generate-embedding') {
-          mockEnv.AI.run.mockResolvedValueOnce({
+          testSetup.mockAI.run.mockResolvedValueOnce({
             data: [mockEmbedding]
           })
           return await fn()
@@ -265,11 +251,11 @@ describe('EmbeddingsWorkflow', () => {
       })
 
       const event = createMockEvent(params)
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.success).toBe(true)
       expect(result.dimensions).toBe(768)
-      expect(mockEnv.AI.run).toHaveBeenCalledWith(
+      expect(testSetup.mockAI.run).toHaveBeenCalledWith(
         '@cf/baai/bge-base-en-v1.5',
         { text: longText }
       )

@@ -1,0 +1,14 @@
+yarn run v1.22.22
+$ c:\node\vector-db\node_modules\.bin\vitest run tests/unit/routes/files/upload.test.ts --coverage --reporter=json
+[vpw:info] Starting single runtime for vitest.config.ts...
+vitest-pool-worker: Unable to remove temporary directory: Error: EBUSY: resource busy or locked, rmdir 'C:\Users\user14pc\AppData\Local\Temp\miniflare-ba69fe4c80d4c384146738e6ac4222f6\cache\miniflare-CacheObject'
+
+[31m⎯⎯⎯⎯⎯⎯[1m[7m Unhandled Error [27m[22m⎯⎯⎯⎯⎯⎯⎯[39m
+[31m[1mUnknown Error[22m: undefined[39m
+
+
+
+[vpw:debug] Shutting down runtimes...
+vitest-pool-worker: Unable to remove temporary directory: Error: EBUSY: resource busy or locked, rmdir 'C:\Users\user14pc\AppData\Local\Temp\miniflare-ba69fe4c80d4c384146738e6ac4222f6\d1\miniflare-D1DatabaseObject'
+error Command failed with exit code 1.
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.

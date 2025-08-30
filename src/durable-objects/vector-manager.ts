@@ -1,5 +1,6 @@
 import { Agent } from 'agents'
 import { findSimilarOptionsSchema, cleanupJobsParamsSchema } from './schemas/vector-manager.schema'
+import { EmbeddingResultSchema, type EmbeddingResult } from '../schemas/embedding-result.schema'
 
 interface SearchHistoryEntry {
   timestamp: string
@@ -59,7 +60,8 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
   initialState: VectorManagerState = {
     searchHistory: [],
     vectorJobs: {},
-    fileProcessingJobs: {}
+    fileProcessingJobs: {},
+    recentVectors: []
   }
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -186,14 +188,14 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
     // Poll for workflow completion
     let attempts = 0
     const maxAttempts = 30 // 30 seconds timeout
-    let embeddingResult = null
+    let embeddingResult: EmbeddingResult | null = null
     
     while (attempts < maxAttempts) {
       const statusResult = await embeddingWorkflowInstance.status()
       console.log(`Attempt ${attempts + 1}: Workflow status:`, statusResult)
       
       if (statusResult.status === 'complete' && statusResult.output) {
-        embeddingResult = statusResult.output
+        embeddingResult = EmbeddingResultSchema.parse(statusResult.output)
         break
       } else if (statusResult.status === 'errored') {
         throw new Error(`Workflow failed: ${statusResult.error || 'Unknown error'}`)
@@ -230,14 +232,14 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
     // Wait for vector operations workflow to complete
     const vectorWorkflowInstance = await this.env.VECTOR_OPERATIONS_WORKFLOW.get(jobId)
     attempts = 0
-    let vectorResult = null
+    let vectorResult: EmbeddingResult | null = null
     
     while (attempts < maxAttempts) {
       const statusResult = await vectorWorkflowInstance.status()
       console.log(`Vector workflow attempt ${attempts + 1}:`, statusResult.status)
       
       if (statusResult.status === 'complete' && statusResult.output) {
-        vectorResult = statusResult.output
+        vectorResult = EmbeddingResultSchema.parse(statusResult.output)
         break
       } else if (statusResult.status === 'errored') {
         throw new Error(`Vector workflow failed: ${statusResult.error || 'Unknown error'}`)
@@ -537,6 +539,78 @@ export class VectorManager extends Agent<Env, VectorManagerState> {
       vectors: resultVectors,
       count: resultVectors.length,
       nextCursor: undefined // 10件以内なのでページネーション不要
+    }
+  }
+
+  /**
+   * 削除されたベクトルIDをローカル状態から除外
+   */
+  async removeDeletedVectors(ids: string[]): Promise<void> {
+    console.log(`[VectorManager] Removing ${ids.length} vectors from local state`)
+    
+    // recentVectorsが初期化されていない場合は初期化
+    if (!this.state.recentVectors) {
+      this.state.recentVectors = []
+      console.log('[VectorManager] Initialized recentVectors array')
+      return
+    }
+    
+    const idsSet = new Set(ids)
+    this.state.recentVectors = this.state.recentVectors.filter(v => !idsSet.has(v.id))
+    console.log(`[VectorManager] Updated local state, ${this.state.recentVectors.length} vectors remaining`)
+  }
+
+  /**
+   * 全ベクトルを削除
+   */
+  async deleteAllVectors(namespace?: string): Promise<{ deletedCount: number; success: boolean }> {
+    console.log(`[VectorManager] Deleting all vectors${namespace ? ` in namespace: ${namespace}` : ' in all namespaces'}`)
+    
+    try {
+      let deletedCount = 0
+      
+      // recentVectorsが初期化されていない場合は初期化
+      if (!this.state.recentVectors) {
+        this.state.recentVectors = []
+      }
+      
+      // ローカルの状態から削除対象のIDを取得
+      const vectorsToDelete = namespace 
+        ? this.state.recentVectors.filter(v => v.namespace === namespace)
+        : this.state.recentVectors
+      
+      if (vectorsToDelete.length > 0) {
+        const idsToDelete = vectorsToDelete.map(v => v.id)
+        console.log(`[VectorManager] Deleting ${idsToDelete.length} vectors from Vectorize`)
+        
+        try {
+          // Vectorizeから削除
+          await this.env.VECTORIZE_INDEX.deleteByIds(idsToDelete)
+          // deleteByIdsは成功時にvoidまたはmutation情報を返す
+          deletedCount = idsToDelete.length
+          console.log(`[VectorManager] Delete operation enqueued for ${deletedCount} vectors`)
+        } catch (error) {
+          console.error('[VectorManager] Error deleting from Vectorize:', error)
+          // エラーがあってもローカル状態はクリアする
+        }
+      }
+      
+      // ローカルの状態をクリア
+      if (namespace) {
+        this.state.recentVectors = this.state.recentVectors.filter(v => v.namespace !== namespace)
+      } else {
+        this.state.recentVectors = []
+      }
+      
+      console.log('[VectorManager] Local state cleared')
+      
+      return {
+        deletedCount,
+        success: true
+      }
+    } catch (error) {
+      console.error('[VectorManager] Delete all vectors error:', error)
+      throw error
     }
   }
 }
