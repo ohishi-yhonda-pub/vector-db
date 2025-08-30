@@ -4,7 +4,7 @@ import searchRoutes from '../../../../src/routes/api/search/index'
 
 // Mock all route handlers
 vi.mock('../../../../src/routes/api/search/vectors', () => ({
-  searchVectorsRoute: { path: '/search/vectors' },
+  searchVectorsRoute: { path: '/search' },
   searchVectorsHandler: vi.fn()
 }))
 
@@ -34,7 +34,7 @@ describe('Search Routes Index', () => {
     
     // Check each route was registered
     expect(app.openapi).toHaveBeenCalledWith(
-      expect.objectContaining({ path: '/search/vectors' }),
+      expect.objectContaining({ path: '/search' }),
       expect.any(Function)
     )
     

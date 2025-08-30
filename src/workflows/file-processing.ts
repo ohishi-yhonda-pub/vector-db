@@ -1,5 +1,6 @@
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers'
 import { fileProcessingParamsSchema, type FileProcessingParams } from './schemas/workflow.schema'
+import { EmbeddingResultSchema, type EmbeddingResult } from '../schemas/embedding-result.schema'
 
 export interface FileProcessingResult {
   type: 'pdf' | 'image'
@@ -121,42 +122,7 @@ export class FileProcessingWorkflow extends WorkflowEntrypoint<Env, FileProcessi
       // Step 2: 分析結果をチャンクに分割（長いテキストの場合）
       const chunks = await step.do('prepare-content-chunks', async () => {
         console.log('[FileProcessingWorkflow] Step 2: Preparing content chunks')
-        const contentParts: Array<{ text: string; type: string }> = []
-        
-        // 説明を追加
-        if (fileAnalysis.description) {
-          contentParts.push({
-            text: fileAnalysis.description,
-            type: 'description'
-          })
-        }
-        
-        // 抽出されたテキストをチャンク分割
-        if (fileAnalysis.extractedText) {
-          const chunkSize = 1000
-          if (fileAnalysis.extractedText.length > chunkSize) {
-            for (let i = 0; i < fileAnalysis.extractedText.length; i += chunkSize) {
-              contentParts.push({
-                text: fileAnalysis.extractedText.slice(i, i + chunkSize),
-                type: 'extracted-text'
-              })
-            }
-          } else {
-            contentParts.push({
-              text: fileAnalysis.extractedText,
-              type: 'extracted-text'
-            })
-          }
-        }
-        
-        // トピックとキーワードを追加
-        if (fileAnalysis.topics || fileAnalysis.keywords) {
-          contentParts.push({
-            text: `Topics: ${fileAnalysis.topics}\nKeywords: ${fileAnalysis.keywords}`,
-            type: 'metadata'
-          })
-        }
-        
+        const contentParts = this.prepareContentChunks(fileAnalysis)
         console.log('[FileProcessingWorkflow] Created', contentParts.length, 'content chunks')
         return contentParts
       })
@@ -195,7 +161,7 @@ export class FileProcessingWorkflow extends WorkflowEntrypoint<Env, FileProcessi
           // Poll for workflow completion
           let attempts = 0
           const maxAttempts = 30
-          let embeddingResult = null
+          let embeddingResult: EmbeddingResult | null = null
           console.log(`[FileProcessingWorkflow] Polling embedding workflow for chunk ${i+1}`)
           
           while (attempts < maxAttempts) {
@@ -203,7 +169,7 @@ export class FileProcessingWorkflow extends WorkflowEntrypoint<Env, FileProcessi
             
             if (statusResult.status === 'complete' && statusResult.output) {
               console.log(`[FileProcessingWorkflow] Embedding completed for chunk ${i+1}`)
-              embeddingResult = statusResult.output
+              embeddingResult = EmbeddingResultSchema.parse(statusResult.output)
               break
             } else if (statusResult.status === 'errored') {
               console.error(`[FileProcessingWorkflow] Embedding workflow failed for chunk ${i+1}: ${statusResult.error}`)
@@ -248,14 +214,14 @@ export class FileProcessingWorkflow extends WorkflowEntrypoint<Env, FileProcessi
           // Wait for vector save to complete
           const vectorWorkflowInstance = await this.env.VECTOR_OPERATIONS_WORKFLOW.get(vectorId)
           attempts = 0
-          let vectorSaveResult = null
+          let vectorSaveResult: EmbeddingResult | null = null
           
           while (attempts < maxAttempts) {
             const statusResult = await vectorWorkflowInstance.status()
             
             if (statusResult.status === 'complete' && statusResult.output) {
               console.log(`[FileProcessingWorkflow] Vector saved for chunk ${i+1}`)
-              vectorSaveResult = statusResult.output
+              vectorSaveResult = EmbeddingResultSchema.parse(statusResult.output)
               break
             } else if (statusResult.status === 'errored') {
               console.error(`[FileProcessingWorkflow] Vector save failed for chunk ${i+1}: ${statusResult.error}`)
@@ -351,6 +317,46 @@ export class FileProcessingWorkflow extends WorkflowEntrypoint<Env, FileProcessi
     }
     
     return ''
+  }
+
+  public prepareContentChunks(fileAnalysis: any): Array<{ text: string; type: string }> {
+    const contentParts: Array<{ text: string; type: string }> = []
+    
+    // 説明を追加
+    if (fileAnalysis.description) {
+      contentParts.push({
+        text: fileAnalysis.description,
+        type: 'description'
+      })
+    }
+    
+    // 抽出されたテキストをチャンク分割
+    if (fileAnalysis.extractedText) {
+      const chunkSize = 1000
+      if (fileAnalysis.extractedText.length > chunkSize) {
+        for (let i = 0; i < fileAnalysis.extractedText.length; i += chunkSize) {
+          contentParts.push({
+            text: fileAnalysis.extractedText.slice(i, i + chunkSize),
+            type: 'extracted-text'
+          })
+        }
+      } else {
+        contentParts.push({
+          text: fileAnalysis.extractedText,
+          type: 'extracted-text'
+        })
+      }
+    }
+    
+    // トピックとキーワードを追加
+    if (fileAnalysis.topics || fileAnalysis.keywords) {
+      contentParts.push({
+        text: `Topics: ${fileAnalysis.topics}\nKeywords: ${fileAnalysis.keywords}`,
+        type: 'metadata'
+      })
+    }
+    
+    return contentParts
   }
 
   private parseAnalysisResponse(response: string): {

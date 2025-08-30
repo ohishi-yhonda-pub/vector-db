@@ -31,6 +31,13 @@ export default defineWorkersProject(async () => {
           },
         },
       },
+      deps: {
+        optimizer: {
+          ssr: {
+            include: ['ajv']
+          }
+        }
+      },
       coverage: {
         enabled: true,
         provider: 'istanbul',

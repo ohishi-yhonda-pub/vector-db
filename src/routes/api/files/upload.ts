@@ -152,22 +152,18 @@ export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = 
       
       // UTF-8としてデコードし直す
       const decoder = new TextDecoder('utf-8')
-      try {
-        const decodedName = decoder.decode(originalBytes)
-        console.log('Decoded filename:', decodedName)
-        // 正常にデコードできたか確認（日本語文字が含まれているか）
-        if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(decodedName)) {
-          fileName = decodedName
-          console.log('Using decoded filename:', fileName)
-        } else {
-          console.log('No Japanese characters found in decoded name')
-        }
-      } catch (e) {
-        // デコードに失敗した場合は元のファイル名を使用
-        console.log('Failed to decode filename as UTF-8, using original:', fileName, e)
+      const decodedName = decoder.decode(originalBytes)
+      console.log('Decoded filename:', decodedName)
+      // 正常にデコードできたか確認（日本語文字が含まれているか）
+      if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(decodedName)) {
+        fileName = decodedName
+        console.log('Using decoded filename:', fileName)
+      } else {
+        console.log('No Japanese characters found in decoded name')
       }
     } catch (error) {
-      console.error('Error processing filename:', error)
+      // デコードに失敗した場合は元のファイル名を使用
+      console.log('Failed to decode filename, using original:', fileName, error)
     }
 
     // ファイルサイズチェック (10MB)

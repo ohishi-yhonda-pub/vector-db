@@ -3,7 +3,7 @@ import { OpenAPIHono } from '@hono/zod-openapi'
 
 // Mock all individual route modules before importing index modules
 vi.mock('../../../src/routes/api/embeddings/generate', () => ({
-  generateEmbeddingRoute: { method: 'post', path: '/embeddings/generate' },
+  generateEmbeddingRoute: { method: 'post', path: '/embeddings' },
   generateEmbeddingHandler: vi.fn()
 }))
 
@@ -23,12 +23,12 @@ vi.mock('../../../src/routes/api/embeddings/models', () => ({
 }))
 
 vi.mock('../../../src/routes/api/search/vectors', () => ({
-  searchVectorsRoute: { method: 'post', path: '/search/vectors' },
+  searchVectorsRoute: { method: 'post', path: '/search' },
   searchVectorsHandler: vi.fn()
 }))
 
 vi.mock('../../../src/routes/api/search/semantic', () => ({
-  semanticSearchRoute: { method: 'post', path: '/search/semantic' },
+  semanticSearchRoute: { method: 'get', path: '/search/semantic' },
   semanticSearchHandler: vi.fn()
 }))
 
@@ -64,13 +64,23 @@ vi.mock('../../../src/routes/api/vectors/status', () => ({
   getAllJobsHandler: vi.fn()
 }))
 
+vi.mock('../../../src/routes/api/vectors/bulk-delete', () => ({
+  bulkDeleteVectorsRoute: { method: 'post', path: '/vectors/bulk-delete' },
+  bulkDeleteVectorsHandler: vi.fn()
+}))
+
+vi.mock('../../../src/routes/api/vectors/delete-all', () => ({
+  deleteAllVectorsRoute: { method: 'delete', path: '/vectors/all' },
+  deleteAllVectorsHandler: vi.fn()
+}))
+
 vi.mock('../../../src/routes/api/files/upload', () => ({
   uploadFileRoute: { method: 'post', path: '/files/upload' },
   uploadFileHandler: vi.fn()
 }))
 
 vi.mock('../../../src/routes/api/files/status', () => ({
-  fileStatusRoute: { method: 'get', path: '/files/{fileId}/status' },
+  fileStatusRoute: { method: 'get', path: '/files/status/{workflowId}' },
   fileStatusHandler: vi.fn()
 }))
 
@@ -122,7 +132,7 @@ describe('Route Index Files', () => {
 
       expect(mockOpenapi).toHaveBeenCalledTimes(4)
       expect(mockOpenapi).toHaveBeenNthCalledWith(1, 
-        expect.objectContaining({ method: 'post', path: '/embeddings/generate' }), 
+        expect.objectContaining({ method: 'post', path: '/embeddings' }), 
         expect.any(Function)
       )
       expect(mockOpenapi).toHaveBeenNthCalledWith(2,
@@ -146,11 +156,11 @@ describe('Route Index Files', () => {
 
       expect(mockOpenapi).toHaveBeenCalledTimes(3)
       expect(mockOpenapi).toHaveBeenNthCalledWith(1,
-        expect.objectContaining({ method: 'post', path: '/search/vectors' }),
+        expect.objectContaining({ method: 'post', path: '/search' }),
         expect.any(Function)
       )
       expect(mockOpenapi).toHaveBeenNthCalledWith(2,
-        expect.objectContaining({ method: 'post', path: '/search/semantic' }),
+        expect.objectContaining({ method: 'get', path: '/search/semantic' }),
         expect.any(Function)
       )
       expect(mockOpenapi).toHaveBeenNthCalledWith(3,
@@ -164,29 +174,38 @@ describe('Route Index Files', () => {
     it('should register all vectors routes', () => {
       vectorsRoutes(app)
 
-      expect(mockOpenapi).toHaveBeenCalledTimes(6)
+      expect(mockOpenapi).toHaveBeenCalledTimes(8)
+      // 実際の登録順序に合わせる
       expect(mockOpenapi).toHaveBeenNthCalledWith(1,
-        expect.objectContaining({ method: 'post', path: '/vectors' }),
+        expect.objectContaining({ method: 'get', path: '/vectors/jobs' }),
         expect.any(Function)
       )
       expect(mockOpenapi).toHaveBeenNthCalledWith(2,
-        expect.objectContaining({ method: 'get', path: '/vectors/{id}' }),
-        expect.any(Function)
-      )
-      expect(mockOpenapi).toHaveBeenNthCalledWith(3,
-        expect.objectContaining({ method: 'get', path: '/vectors' }),
-        expect.any(Function)
-      )
-      expect(mockOpenapi).toHaveBeenNthCalledWith(4,
-        expect.objectContaining({ method: 'delete', path: '/vectors/{id}' }),
-        expect.any(Function)
-      )
-      expect(mockOpenapi).toHaveBeenNthCalledWith(5,
         expect.objectContaining({ method: 'get', path: '/vectors/jobs/{jobId}' }),
         expect.any(Function)
       )
+      expect(mockOpenapi).toHaveBeenNthCalledWith(3,
+        expect.objectContaining({ method: 'delete', path: '/vectors/all' }),
+        expect.any(Function)
+      )
+      expect(mockOpenapi).toHaveBeenNthCalledWith(4,
+        expect.objectContaining({ method: 'post', path: '/vectors/bulk-delete' }),
+        expect.any(Function)
+      )
+      expect(mockOpenapi).toHaveBeenNthCalledWith(5,
+        expect.objectContaining({ method: 'post', path: '/vectors' }),
+        expect.any(Function)
+      )
       expect(mockOpenapi).toHaveBeenNthCalledWith(6,
-        expect.objectContaining({ method: 'get', path: '/vectors/jobs' }),
+        expect.objectContaining({ method: 'get', path: '/vectors' }),
+        expect.any(Function)
+      )
+      expect(mockOpenapi).toHaveBeenNthCalledWith(7,
+        expect.objectContaining({ method: 'get', path: '/vectors/{id}' }),
+        expect.any(Function)
+      )
+      expect(mockOpenapi).toHaveBeenNthCalledWith(8,
+        expect.objectContaining({ method: 'delete', path: '/vectors/{id}' }),
         expect.any(Function)
       )
     })
@@ -202,7 +221,7 @@ describe('Route Index Files', () => {
         expect.any(Function)
       )
       expect(mockOpenapi).toHaveBeenNthCalledWith(2,
-        expect.objectContaining({ method: 'get', path: '/files/{fileId}/status' }),
+        expect.objectContaining({ method: 'get', path: '/files/status/{workflowId}' }),
         expect.any(Function)
       )
     })
@@ -244,7 +263,7 @@ describe('Route Index Files', () => {
       filesRoutes(app)
       notionRoutes(app)
 
-      expect(mockOpenapi).toHaveBeenCalledTimes(20) // 4+3+6+2+5 = 20 total routes
+      expect(mockOpenapi).toHaveBeenCalledTimes(22) // 4+3+8+2+5 = 22 total routes
     })
 
     it('should return the app instance for chaining', () => {

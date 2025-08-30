@@ -1,49 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import { getJobStatusRoute, getJobStatusHandler, getAllJobsRoute, getAllJobsHandler } from '../../../../src/routes/api/vectors/status'
-
-// Mock Vector Manager Durable Object
-const mockVectorManager = {
-  getJobStatus: vi.fn(),
-  getAllJobs: vi.fn()
-}
-
-// Mock Durable Object namespace
-const mockVectorCacheNamespace = {
-  idFromName: vi.fn().mockReturnValue('mock-id'),
-  get: vi.fn().mockReturnValue(mockVectorManager)
-}
+import { setupVectorRouteTest } from '../../test-helpers'
 
 describe('Vector Job Status Routes', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupVectorRouteTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: 'test-key',
-      AI: {} as any,
-      VECTORIZE_INDEX: {} as any,
-      VECTOR_CACHE: mockVectorCacheNamespace as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as any,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as any,
-      VECTOR_OPERATIONS_WORKFLOW: {} as any,
-      FILE_PROCESSING_WORKFLOW: {} as any,
-      NOTION_SYNC_WORKFLOW: {} as any
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(getJobStatusRoute, getJobStatusHandler)
-    app.openapi(getAllJobsRoute, getAllJobsHandler)
+    testSetup = setupVectorRouteTest()
+    testSetup.app.openapi(getJobStatusRoute, getJobStatusHandler)
+    testSetup.app.openapi(getAllJobsRoute, getAllJobsHandler)
   })
 
   describe('GET /vectors/jobs/{jobId}', () => {
@@ -61,33 +27,33 @@ describe('Vector Job Status Routes', () => {
         vectorId: 'vec-123'
       }
 
-      mockVectorManager.getJobStatus.mockResolvedValueOnce(mockJob)
+      testSetup.mockVectorManager.getJobStatus.mockResolvedValueOnce(mockJob)
 
-      const response = await app.request('/vectors/jobs/job-123', {
+      const response = await testSetup.app.request('/vectors/jobs/job-123', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(200)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: true,
         data: mockJob
       })
       
-      expect(mockVectorCacheNamespace.idFromName).toHaveBeenCalledWith('default')
-      expect(mockVectorCacheNamespace.get).toHaveBeenCalledWith('mock-id')
-      expect(mockVectorManager.getJobStatus).toHaveBeenCalledWith('job-123')
+      expect(testSetup.mockVectorCacheNamespace.idFromName).toHaveBeenCalledWith('default')
+      expect(testSetup.mockVectorCacheNamespace.get).toHaveBeenCalledWith('mock-id')
+      expect(testSetup.mockVectorManager.getJobStatus).toHaveBeenCalledWith('job-123')
     })
 
     it('should return 404 when job not found', async () => {
-      mockVectorManager.getJobStatus.mockResolvedValueOnce(undefined)
+      testSetup.mockVectorManager.getJobStatus.mockResolvedValueOnce(undefined)
 
-      const response = await app.request('/vectors/jobs/non-existent-job', {
+      const response = await testSetup.app.request('/vectors/jobs/non-existent-job', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(404)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: false,
         error: 'Not Found',
@@ -96,14 +62,14 @@ describe('Vector Job Status Routes', () => {
     })
 
     it('should handle errors gracefully', async () => {
-      mockVectorManager.getJobStatus.mockRejectedValueOnce(new Error('Database error'))
+      testSetup.mockVectorManager.getJobStatus.mockRejectedValueOnce(new Error('Database error'))
 
-      const response = await app.request('/vectors/jobs/job-123', {
+      const response = await testSetup.app.request('/vectors/jobs/job-123', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(500)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: false,
         error: 'Internal Server Error',
@@ -119,14 +85,14 @@ describe('Vector Job Status Routes', () => {
         status: 'invalid-status'
       }
 
-      mockVectorManager.getJobStatus.mockResolvedValueOnce(invalidJob)
+      testSetup.mockVectorManager.getJobStatus.mockResolvedValueOnce(invalidJob)
 
-      const response = await app.request('/vectors/jobs/job-123', {
+      const response = await testSetup.app.request('/vectors/jobs/job-123', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(500)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json.success).toBe(false)
       expect(json.error).toBe('Internal Server Error')
     })
@@ -156,14 +122,14 @@ describe('Vector Job Status Routes', () => {
         }
       ]
 
-      mockVectorManager.getAllJobs.mockResolvedValueOnce(mockJobs)
+      testSetup.mockVectorManager.getAllJobs.mockResolvedValueOnce(mockJobs)
 
-      const response = await app.request('/vectors/jobs', {
+      const response = await testSetup.app.request('/vectors/jobs', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(200)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: true,
         data: {
@@ -172,20 +138,20 @@ describe('Vector Job Status Routes', () => {
         }
       })
       
-      expect(mockVectorCacheNamespace.idFromName).toHaveBeenCalledWith('default')
-      expect(mockVectorCacheNamespace.get).toHaveBeenCalledWith('mock-id')
-      expect(mockVectorManager.getAllJobs).toHaveBeenCalled()
+      expect(testSetup.mockVectorCacheNamespace.idFromName).toHaveBeenCalledWith('default')
+      expect(testSetup.mockVectorCacheNamespace.get).toHaveBeenCalledWith('mock-id')
+      expect(testSetup.mockVectorManager.getAllJobs).toHaveBeenCalled()
     })
 
     it('should return empty array when no jobs exist', async () => {
-      mockVectorManager.getAllJobs.mockResolvedValueOnce([])
+      testSetup.mockVectorManager.getAllJobs.mockResolvedValueOnce([])
 
-      const response = await app.request('/vectors/jobs', {
+      const response = await testSetup.app.request('/vectors/jobs', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(200)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: true,
         data: {
@@ -196,14 +162,14 @@ describe('Vector Job Status Routes', () => {
     })
 
     it('should handle errors gracefully', async () => {
-      mockVectorManager.getAllJobs.mockRejectedValueOnce(new Error('Database connection failed'))
+      testSetup.mockVectorManager.getAllJobs.mockRejectedValueOnce(new Error('Database connection failed'))
 
-      const response = await app.request('/vectors/jobs', {
+      const response = await testSetup.app.request('/vectors/jobs', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(500)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: false,
         error: 'Internal Server Error',
@@ -212,14 +178,14 @@ describe('Vector Job Status Routes', () => {
     })
 
     it('should handle non-Error exceptions in getJobStatus', async () => {
-      mockVectorManager.getJobStatus.mockRejectedValueOnce('String error')
+      testSetup.mockVectorManager.getJobStatus.mockRejectedValueOnce('String error')
 
-      const response = await app.request('/vectors/jobs/job-123', {
+      const response = await testSetup.app.request('/vectors/jobs/job-123', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(500)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: false,
         error: 'Internal Server Error',
@@ -228,14 +194,14 @@ describe('Vector Job Status Routes', () => {
     })
 
     it('should handle non-Error exceptions in getAllJobs', async () => {
-      mockVectorManager.getAllJobs.mockRejectedValueOnce('String error')
+      testSetup.mockVectorManager.getAllJobs.mockRejectedValueOnce('String error')
 
-      const response = await app.request('/vectors/jobs', {
+      const response = await testSetup.app.request('/vectors/jobs', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(500)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json).toEqual({
         success: false,
         error: 'Internal Server Error',
@@ -252,14 +218,14 @@ describe('Vector Job Status Routes', () => {
         }
       ]
 
-      mockVectorManager.getAllJobs.mockResolvedValueOnce(invalidJobs)
+      testSetup.mockVectorManager.getAllJobs.mockResolvedValueOnce(invalidJobs)
 
-      const response = await app.request('/vectors/jobs', {
+      const response = await testSetup.app.request('/vectors/jobs', {
         method: 'GET',
-      }, mockEnv)
+      }, testSetup.mockEnv)
 
       expect(response.status).toBe(500)
-      const json = await response.json()
+      const json = await response.json() as any
       expect(json.success).toBe(false)
       expect(json.error).toBe('Internal Server Error')
     })

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setupWorkflowTest } from '../test-helpers'
 
 // Mock cloudflare:workers
 vi.mock('cloudflare:workers', () => ({
@@ -12,11 +13,6 @@ vi.mock('cloudflare:workers', () => ({
 // Import after mocking
 import { VectorOperationsWorkflow } from '../../../src/workflows/vector-operations'
 
-// Mock WorkflowStep
-const mockStep = {
-  do: vi.fn()
-}
-
 // Mock WorkflowEvent
 const createMockEvent = (payload: any) => ({
   payload,
@@ -25,23 +21,20 @@ const createMockEvent = (payload: any) => ({
 
 describe('VectorOperationsWorkflow', () => {
   let workflow: VectorOperationsWorkflow
-  let mockEnv: any
-  let mockCtx: any
+  let testSetup: ReturnType<typeof setupWorkflowTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    testSetup = setupWorkflowTest()
     
-    mockEnv = {
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      VECTORIZE_INDEX: {
-        insert: vi.fn().mockResolvedValue(undefined),
-        deleteByIds: vi.fn()
-      }
+    // Add additional env variables
+    testSetup.mockEnv.DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-base-en-v1.5'
+    testSetup.mockEnv.VECTORIZE_INDEX = {
+      insert: vi.fn().mockResolvedValue(undefined),
+      deleteByIds: vi.fn()
     }
-
-    mockCtx = {}
-
-    workflow = new VectorOperationsWorkflow(mockCtx, mockEnv)
+    
+    workflow = new VectorOperationsWorkflow(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   describe('run', () => {
@@ -55,7 +48,7 @@ describe('VectorOperationsWorkflow', () => {
           metadata: { source: 'test' }
         }
         
-        mockStep.do
+        testSetup.mockStep.do
           .mockImplementationOnce(async (name, fn) => {
             // create-vector-id
             if (name === 'create-vector-id') {
@@ -70,7 +63,7 @@ describe('VectorOperationsWorkflow', () => {
           })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'create',
@@ -80,7 +73,7 @@ describe('VectorOperationsWorkflow', () => {
           completedAt: expect.any(String)
         })
 
-        expect(mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith([
+        expect(testSetup.mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith([
           expect.objectContaining({
             id: expect.stringMatching(/^vec_\d+_[a-z0-9]+$/),
             values: mockEmbedding,
@@ -98,7 +91,7 @@ describe('VectorOperationsWorkflow', () => {
           namespace: 'test'
         }
         
-        mockStep.do
+        testSetup.mockStep.do
           .mockImplementationOnce(async (name, fn) => {
             if (name === 'create-vector-id') {
               return await fn()
@@ -107,7 +100,7 @@ describe('VectorOperationsWorkflow', () => {
           .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result.vectorId).toBe('custom-vector-id')
       })
@@ -119,14 +112,14 @@ describe('VectorOperationsWorkflow', () => {
           embedding: mockEmbedding
         }
         
-        mockStep.do
+        testSetup.mockStep.do
           .mockImplementationOnce(async (name, fn) => await fn())
           .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
-        await workflow.run(event as any, mockStep as any)
+        await workflow.run(event as any, testSetup.mockStep as any)
 
-        expect(mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith([
+        expect(testSetup.mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith([
           expect.objectContaining({
             namespace: 'default'
           })
@@ -140,17 +133,17 @@ describe('VectorOperationsWorkflow', () => {
           embedding: mockEmbedding
         }
         
-        mockStep.do
+        testSetup.mockStep.do
           .mockImplementationOnce(async (name, fn) => await fn())
           .mockImplementationOnce(async (name, fn) => {
             if (name === 'save-to-vectorize') {
-              mockEnv.VECTORIZE_INDEX.insert.mockRejectedValueOnce(new Error('Vectorize error'))
+              testSetup.mockEnv.VECTORIZE_INDEX.insert.mockRejectedValueOnce(new Error('Vectorize error'))
               return await fn()
             }
           })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'create',
@@ -166,12 +159,12 @@ describe('VectorOperationsWorkflow', () => {
           embedding: []
         }
         
-        mockStep.do
+        testSetup.mockStep.do
           .mockImplementationOnce(async (name, fn) => await fn())
           .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'create',
@@ -189,14 +182,14 @@ describe('VectorOperationsWorkflow', () => {
           metadata: { custom: 'metadata' }
         }
         
-        mockStep.do
+        testSetup.mockStep.do
           .mockImplementationOnce(async (name, fn) => await fn())
           .mockImplementationOnce(async (name, fn) => await fn())
 
         const event = createMockEvent(params)
-        await workflow.run(event as any, mockStep as any)
+        await workflow.run(event as any, testSetup.mockStep as any)
 
-        expect(mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith([
+        expect(testSetup.mockEnv.VECTORIZE_INDEX.insert).toHaveBeenCalledWith([
           expect.objectContaining({
             metadata: expect.objectContaining({
               custom: 'metadata'
@@ -213,9 +206,9 @@ describe('VectorOperationsWorkflow', () => {
           vectorIds: ['vec1', 'vec2', 'vec3']
         }
         
-        mockStep.do.mockImplementationOnce(async (name, fn) => {
+        testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
+            testSetup.mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
               count: 3
             })
             return await fn()
@@ -223,7 +216,7 @@ describe('VectorOperationsWorkflow', () => {
         })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'delete',
@@ -232,7 +225,7 @@ describe('VectorOperationsWorkflow', () => {
           completedAt: expect.any(String)
         })
 
-        expect(mockEnv.VECTORIZE_INDEX.deleteByIds).toHaveBeenCalledWith(['vec1', 'vec2', 'vec3'])
+        expect(testSetup.mockEnv.VECTORIZE_INDEX.deleteByIds).toHaveBeenCalledWith(['vec1', 'vec2', 'vec3'])
       })
 
       it('should handle partial deletion', async () => {
@@ -241,9 +234,9 @@ describe('VectorOperationsWorkflow', () => {
           vectorIds: ['vec1', 'vec2']
         }
         
-        mockStep.do.mockImplementationOnce(async (name, fn) => {
+        testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
+            testSetup.mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
               count: 1
             })
             return await fn()
@@ -251,7 +244,7 @@ describe('VectorOperationsWorkflow', () => {
         })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'delete',
@@ -267,15 +260,15 @@ describe('VectorOperationsWorkflow', () => {
           vectorIds: ['vec1']
         }
         
-        mockStep.do.mockImplementationOnce(async (name, fn) => {
+        testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockRejectedValueOnce(new Error('Delete error'))
+            testSetup.mockEnv.VECTORIZE_INDEX.deleteByIds.mockRejectedValueOnce(new Error('Delete error'))
             return await fn()
           }
         })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'delete',
@@ -291,9 +284,9 @@ describe('VectorOperationsWorkflow', () => {
           vectorIds: []
         }
         
-        mockStep.do.mockImplementationOnce(async (name, fn) => {
+        testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
-            mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
+            testSetup.mockEnv.VECTORIZE_INDEX.deleteByIds.mockResolvedValueOnce({
               count: 0
             })
             return await fn()
@@ -301,7 +294,7 @@ describe('VectorOperationsWorkflow', () => {
         })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'delete',
@@ -319,14 +312,14 @@ describe('VectorOperationsWorkflow', () => {
           vectorIds: ['vec1']
         }
         
-        mockStep.do.mockImplementationOnce(async (name, fn) => {
+        testSetup.mockStep.do.mockImplementationOnce(async (name, fn) => {
           if (name === 'delete-from-vectorize') {
             throw 'String error'
           }
         })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'delete',
@@ -342,7 +335,7 @@ describe('VectorOperationsWorkflow', () => {
           embedding: [0.1]
         }
         
-        mockStep.do
+        testSetup.mockStep.do
           .mockImplementationOnce(async (name, fn) => await fn())
           .mockImplementationOnce(async (name, fn) => {
             if (name === 'save-to-vectorize') {
@@ -351,7 +344,7 @@ describe('VectorOperationsWorkflow', () => {
           })
 
         const event = createMockEvent(params)
-        const result = await workflow.run(event as any, mockStep as any)
+        const result = await workflow.run(event as any, testSetup.mockStep as any)
 
         expect(result).toMatchObject({
           type: 'create',
@@ -370,7 +363,7 @@ describe('VectorOperationsWorkflow', () => {
         const event = createMockEvent(params)
         
         await expect(async () => {
-          await workflow.run(event as any, mockStep as any)
+          await workflow.run(event as any, testSetup.mockStep as any)
         }).rejects.toThrow()
       })
     })

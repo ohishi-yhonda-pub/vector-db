@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setupWorkflowTest } from '../test-helpers'
 
 // Mock cloudflare:workers
 vi.mock('cloudflare:workers', () => ({
@@ -12,12 +13,6 @@ vi.mock('cloudflare:workers', () => ({
 // Import after mocking (zodは実際のものを使用)
 import { BatchEmbeddingsWorkflow } from '../../../src/workflows/batch-embeddings'
 
-// Mock WorkflowStep
-const mockStep = {
-  do: vi.fn(),
-  sleep: vi.fn()
-}
-
 // Mock WorkflowEvent
 const createMockEvent = (payload: any) => ({
   payload,
@@ -26,36 +21,30 @@ const createMockEvent = (payload: any) => ({
 
 describe('BatchEmbeddingsWorkflow', () => {
   let workflow: BatchEmbeddingsWorkflow
-  let mockEnv: any
-  let mockCtx: any
+  let testSetup: ReturnType<typeof setupWorkflowTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    testSetup = setupWorkflowTest()
     
-    mockEnv = {
-      AI: {
-        run: vi.fn()
-      },
-      VECTORIZE_INDEX: {
-        insert: vi.fn()
-      }
+    // Add VECTORIZE_INDEX to mockEnv
+    testSetup.mockEnv.VECTORIZE_INDEX = {
+      insert: vi.fn()
     }
-
-    mockCtx = {}
-
-    workflow = new BatchEmbeddingsWorkflow(mockCtx, mockEnv)
+    
+    workflow = new BatchEmbeddingsWorkflow(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   describe('generateSingleEmbedding', () => {
     it('should generate embedding successfully', async () => {
       const mockEmbedding = [0.1, 0.2, 0.3]
-      mockEnv.AI.run.mockResolvedValueOnce({
+      testSetup.mockAI.run.mockResolvedValueOnce({
         data: [mockEmbedding]
       })
 
       const result = await (workflow as any).generateSingleEmbedding('test text')
       
-      expect(mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', { text: 'test text' })
+      expect(testSetup.mockAI.run).toHaveBeenCalledWith('@cf/baai/bge-base-en-v1.5', { text: 'test text' })
       expect(result).toEqual({
         text: 'test text',
         embedding: mockEmbedding,
@@ -64,7 +53,7 @@ describe('BatchEmbeddingsWorkflow', () => {
     })
 
     it('should handle empty data response', async () => {
-      mockEnv.AI.run.mockResolvedValueOnce({
+      testSetup.mockAI.run.mockResolvedValueOnce({
         data: []
       })
 
@@ -78,7 +67,7 @@ describe('BatchEmbeddingsWorkflow', () => {
     })
 
     it('should handle missing data property', async () => {
-      mockEnv.AI.run.mockResolvedValueOnce({})
+      testSetup.mockAI.run.mockResolvedValueOnce({})
 
       const result = await (workflow as any).generateSingleEmbedding('test text')
       
@@ -90,7 +79,7 @@ describe('BatchEmbeddingsWorkflow', () => {
     })
 
     it('should handle AI run errors', async () => {
-      mockEnv.AI.run.mockRejectedValueOnce(new Error('AI service error'))
+      testSetup.mockAI.run.mockRejectedValueOnce(new Error('AI service error'))
 
       const result = await (workflow as any).generateSingleEmbedding('test text')
       
@@ -102,7 +91,7 @@ describe('BatchEmbeddingsWorkflow', () => {
     })
 
     it('should handle non-Error exceptions', async () => {
-      mockEnv.AI.run.mockRejectedValueOnce('Unknown error')
+      testSetup.mockAI.run.mockRejectedValueOnce('Unknown error')
 
       const result = await (workflow as any).generateSingleEmbedding('test text')
       
@@ -114,13 +103,13 @@ describe('BatchEmbeddingsWorkflow', () => {
     })
 
     it('should use custom model when provided', async () => {
-      mockEnv.AI.run.mockResolvedValueOnce({
+      testSetup.mockAI.run.mockResolvedValueOnce({
         data: [[0.1, 0.2]]
       })
 
       await (workflow as any).generateSingleEmbedding('test text', '@cf/baai/bge-large-en-v1.5')
       
-      expect(mockEnv.AI.run).toHaveBeenCalledWith('@cf/baai/bge-large-en-v1.5', { text: 'test text' })
+      expect(testSetup.mockAI.run).toHaveBeenCalledWith('@cf/baai/bge-large-en-v1.5', { text: 'test text' })
     })
   })
 
@@ -129,16 +118,16 @@ describe('BatchEmbeddingsWorkflow', () => {
       const mockEmbedding = [0.1, 0.2, 0.3]
       const texts = ['text1', 'text2']
       
-      mockStep.do.mockImplementation(async (name, fn) => fn())
-      mockEnv.AI.run.mockResolvedValue({
+      testSetup.mockStep.do.mockImplementation(async (name, fn) => fn())
+      testSetup.mockAI.run.mockResolvedValue({
         data: [mockEmbedding]
       })
 
       const event = createMockEvent({ texts })
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
-      expect(mockStep.do).toHaveBeenCalledWith('process-batch-0', expect.any(Function))
-      expect(mockStep.sleep).not.toHaveBeenCalled()
+      expect(testSetup.mockStep.do).toHaveBeenCalledWith('process-batch-0', expect.any(Function))
+      expect(testSetup.mockStep.sleep).not.toHaveBeenCalled()
       expect(result).toMatchObject({
         totalCount: 2,
         successCount: 2,
@@ -150,31 +139,31 @@ describe('BatchEmbeddingsWorkflow', () => {
     it('should process multiple batches with delays', async () => {
       const texts = Array(25).fill('text') // 3 batches with default batch size 10
       
-      mockStep.do.mockImplementation(async (name, fn) => fn())
-      mockEnv.AI.run.mockResolvedValue({
+      testSetup.mockStep.do.mockImplementation(async (name, fn) => fn())
+      testSetup.mockAI.run.mockResolvedValue({
         data: [[0.1, 0.2, 0.3]]
       })
 
       const event = createMockEvent({ texts })
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
-      expect(mockStep.do).toHaveBeenCalledTimes(3)
-      expect(mockStep.sleep).toHaveBeenCalledTimes(2)
-      expect(mockStep.sleep).toHaveBeenCalledWith('batch-delay', 100)
+      expect(testSetup.mockStep.do).toHaveBeenCalledTimes(3)
+      expect(testSetup.mockStep.sleep).toHaveBeenCalledTimes(2)
+      expect(testSetup.mockStep.sleep).toHaveBeenCalledWith('batch-delay', 100)
       expect(result.totalCount).toBe(25)
     })
 
     it('should handle mixed success and failure', async () => {
       const texts = ['success1', 'fail1', 'success2']
       
-      mockStep.do.mockImplementation(async (name, fn) => fn())
-      mockEnv.AI.run
+      testSetup.mockStep.do.mockImplementation(async (name, fn) => fn())
+      testSetup.mockAI.run
         .mockResolvedValueOnce({ data: [[0.1, 0.2]] })
         .mockRejectedValueOnce(new Error('Failed'))
         .mockResolvedValueOnce({ data: [[0.3, 0.4]] })
 
       const event = createMockEvent({ texts })
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result.successCount).toBe(2)
       expect(result.failedCount).toBe(1)
@@ -188,17 +177,17 @@ describe('BatchEmbeddingsWorkflow', () => {
     it('should return embeddings without saving to Vectorize', async () => {
       const texts = ['text1', 'text2']
       
-      mockStep.do.mockImplementation(async (name, fn) => fn())
+      testSetup.mockStep.do.mockImplementation(async (name, fn) => fn())
       
-      mockEnv.AI.run.mockResolvedValue({
+      testSetup.mockAI.run.mockResolvedValue({
         data: [[0.1, 0.2, 0.3]]
       })
 
       const event = createMockEvent({ texts })
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       // Should NOT save to Vectorize anymore
-      expect(mockEnv.VECTORIZE_INDEX.insert).not.toHaveBeenCalled()
+      expect(testSetup.mockEnv.VECTORIZE_INDEX.insert).not.toHaveBeenCalled()
       
       // Should return embeddings in result
       expect(result.embeddings).toHaveLength(2)
@@ -212,14 +201,14 @@ describe('BatchEmbeddingsWorkflow', () => {
     it('should handle all embeddings failing', async () => {
       const texts = ['text1', 'text2']
       
-      mockStep.do.mockImplementation(async (name, fn) => fn())
-      mockEnv.AI.run.mockRejectedValue(new Error('Failed'))
+      testSetup.mockStep.do.mockImplementation(async (name, fn) => fn())
+      testSetup.mockAI.run.mockRejectedValue(new Error('Failed'))
 
       const event = createMockEvent({ texts })
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
-      expect(mockStep.do).toHaveBeenCalledTimes(1) // Only process batch
-      expect(mockEnv.VECTORIZE_INDEX.insert).not.toHaveBeenCalled()
+      expect(testSetup.mockStep.do).toHaveBeenCalledTimes(1) // Only process batch
+      expect(testSetup.mockEnv.VECTORIZE_INDEX.insert).not.toHaveBeenCalled()
       expect(result.failedCount).toBe(2)
       expect(result.failed).toHaveLength(2)
     })
@@ -229,8 +218,8 @@ describe('BatchEmbeddingsWorkflow', () => {
       const customModel = '@cf/baai/bge-large-en-v1.5'
       const customBatchSize = 2
       
-      mockStep.do.mockImplementation(async (name, fn) => fn())
-      mockEnv.AI.run.mockResolvedValue({
+      testSetup.mockStep.do.mockImplementation(async (name, fn) => fn())
+      testSetup.mockAI.run.mockResolvedValue({
         data: [[0.1, 0.2]]
       })
 
@@ -240,15 +229,15 @@ describe('BatchEmbeddingsWorkflow', () => {
         batchSize: customBatchSize
       })
       
-      await workflow.run(event as any, mockStep as any)
+      await workflow.run(event as any, testSetup.mockStep as any)
 
-      expect(mockStep.do).toHaveBeenCalledTimes(3) // 5 texts / batch size 2 = 3 batches
-      expect(mockEnv.AI.run).toHaveBeenCalledWith(customModel, expect.any(Object))
+      expect(testSetup.mockStep.do).toHaveBeenCalledTimes(3) // 5 texts / batch size 2 = 3 batches
+      expect(testSetup.mockAI.run).toHaveBeenCalledWith(customModel, expect.any(Object))
     })
 
     it('should handle empty texts array', async () => {
       const event = createMockEvent({ texts: [] })
-      const result = await workflow.run(event as any, mockStep as any)
+      const result = await workflow.run(event as any, testSetup.mockStep as any)
 
       expect(result).toMatchObject({
         totalCount: 0,

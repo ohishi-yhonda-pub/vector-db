@@ -27,6 +27,10 @@
         "class_name": "VectorManager"
       },
       {
+        "name": "VECTOR_MANAGER",
+        "class_name": "VectorManager"
+      },
+      {
         "name": "AI_EMBEDDINGS",
         "class_name": "AIEmbeddings"
       },
