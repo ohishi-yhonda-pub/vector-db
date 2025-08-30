@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import { similarSearchRoute, similarSearchHandler } from '../../../../src/routes/api/search/similar'
 import { VectorizeService } from '../../../../src/services'
+import { setupSearchRouteTest } from '../../test-helpers/test-scenarios'
+import { createMockRequest } from '../../test-helpers'
 
 // Mock VectorizeService
 const mockFindSimilar = vi.fn()
@@ -14,35 +15,13 @@ vi.mock('../../../../src/services', () => ({
 }))
 
 describe('Similar Search Route', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupSearchRouteTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
     
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: '',
-      AI: {} as any,
-      VECTORIZE_INDEX: {} as any,
-      VECTOR_CACHE: {} as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as any,
-      EMBEDDINGS_WORKFLOW: {} as any,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as any,
-      VECTOR_OPERATIONS_WORKFLOW: {} as any,
-      FILE_PROCESSING_WORKFLOW: {} as any,
-      NOTION_SYNC_WORKFLOW: {} as any
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(similarSearchRoute, similarSearchHandler)
+    testSetup = setupSearchRouteTest()
+    testSetup.app.openapi(similarSearchRoute, similarSearchHandler)
   })
 
   describe('POST /search/similar', () => {
@@ -56,16 +35,15 @@ describe('Similar Search Route', () => {
 
       mockFindSimilar.mockResolvedValue(mockSearchResults)
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_123456',
           topK: 5
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -99,17 +77,16 @@ describe('Similar Search Route', () => {
 
       mockFindSimilar.mockResolvedValue(mockSearchResults)
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_test',
           namespace: 'test-namespace',
           excludeSelf: false
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -129,15 +106,14 @@ describe('Similar Search Route', () => {
 
       mockFindSimilar.mockResolvedValue(mockSearchResults)
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_minimal'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -151,59 +127,55 @@ describe('Similar Search Route', () => {
     })
 
     it('should validate required vectorId parameter', async () => {
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           topK: 5
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
 
     it('should validate empty vectorId', async () => {
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: ''
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
 
     it('should validate topK range (too high)', async () => {
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_test',
           topK: 150
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
 
     it('should validate topK range (too low)', async () => {
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_test',
           topK: 0
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       
       expect(response.status).toBe(400)
     })
@@ -211,15 +183,14 @@ describe('Similar Search Route', () => {
     it('should handle vector not found error', async () => {
       mockFindSimilar.mockRejectedValue(new Error('Vector not found'))
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_nonexistent'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
@@ -233,15 +204,14 @@ describe('Similar Search Route', () => {
     it('should handle other errors', async () => {
       mockFindSimilar.mockRejectedValue(new Error('Search failed'))
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_error'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -255,15 +225,14 @@ describe('Similar Search Route', () => {
     it('should handle non-Error exceptions', async () => {
       mockFindSimilar.mockRejectedValue('String error')
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_unknown'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -273,15 +242,14 @@ describe('Similar Search Route', () => {
     it('should handle empty search results', async () => {
       mockFindSimilar.mockResolvedValue({ matches: [] })
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_no_similar'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -298,15 +266,14 @@ describe('Similar Search Route', () => {
 
       mockFindSimilar.mockResolvedValue(mockSearchResults)
 
-      const request = new Request('http://localhost/search/similar', {
+      const request = createMockRequest('http://localhost/search/similar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           vectorId: 'vec_special-chars_123'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)

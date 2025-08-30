@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AIEmbeddings } from '../../../src/durable-objects/ai-embeddings'
+import { setupDurableObjectTest } from '../test-helpers'
 
 // Mock the Agent class
 vi.mock('agents', () => ({
@@ -16,32 +17,24 @@ vi.mock('agents', () => ({
 
 describe('AIEmbeddings Durable Object', () => {
   let aiEmbeddings: AIEmbeddings
-  let mockCtx: any
-  let mockEnv: any
+  let testSetup: ReturnType<typeof setupDurableObjectTest>
   let mockWorkflow: any
 
   beforeEach(() => {
+    testSetup = setupDurableObjectTest()
+    
     mockWorkflow = {
       id: 'workflow-123',
       status: vi.fn().mockResolvedValue({ status: 'running' })
     }
 
-    mockEnv = {
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      BATCH_EMBEDDINGS_WORKFLOW: {
-        create: vi.fn().mockResolvedValue(mockWorkflow),
-        get: vi.fn().mockResolvedValue(mockWorkflow)
-      }
+    testSetup.mockEnv.DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-base-en-v1.5'
+    testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW = {
+      create: vi.fn().mockResolvedValue(mockWorkflow),
+      get: vi.fn().mockResolvedValue(mockWorkflow)
     }
 
-    mockCtx = {
-      storage: {
-        get: vi.fn(),
-        put: vi.fn()
-      }
-    }
-
-    aiEmbeddings = new AIEmbeddings(mockCtx, mockEnv)
+    aiEmbeddings = new AIEmbeddings(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   describe('constructor', () => {
@@ -56,7 +49,7 @@ describe('AIEmbeddings Durable Object', () => {
       const text = 'Test text'
       const result = await aiEmbeddings.generateEmbedding(text)
 
-      expect(mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining('single_'),
         params: {
           texts: [text],
@@ -86,7 +79,7 @@ describe('AIEmbeddings Durable Object', () => {
       
       await aiEmbeddings.generateEmbedding(text, customModel)
 
-      expect(mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining('single_'),
         params: {
           texts: [text],
@@ -103,7 +96,7 @@ describe('AIEmbeddings Durable Object', () => {
       const texts = ['Text 1', 'Text 2', 'Text 3']
       const result = await aiEmbeddings.scheduleBatchEmbeddings(texts)
 
-      expect(mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining('batch_'),
         params: {
           texts,
@@ -132,7 +125,7 @@ describe('AIEmbeddings Durable Object', () => {
 
       const result = await aiEmbeddings.scheduleBatchEmbeddings(texts, customModel, options)
 
-      expect(mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining('batch_'),
         params: {
           texts,
@@ -184,7 +177,7 @@ describe('AIEmbeddings Durable Object', () => {
 
       const result = await aiEmbeddings.getWorkflowStatus(workflowId)
       
-      expect(mockEnv.BATCH_EMBEDDINGS_WORKFLOW.get).toHaveBeenCalledWith(workflowId)
+      expect(testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW.get).toHaveBeenCalledWith(workflowId)
       expect(result).toEqual(expectedStatus)
     })
   })
@@ -194,7 +187,7 @@ describe('AIEmbeddings Durable Object', () => {
       const texts = ['Text 1', 'Text 2', 'Text 3', 'Text 4']
       const result = await aiEmbeddings.generateBatchEmbeddings(texts)
 
-      expect(mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining('batch_'),
         params: {
           texts,
@@ -222,7 +215,7 @@ describe('AIEmbeddings Durable Object', () => {
 
       const result = await aiEmbeddings.generateBatchEmbeddings(texts, customModel, options)
 
-      expect(mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
+      expect(testSetup.mockEnv.BATCH_EMBEDDINGS_WORKFLOW.create).toHaveBeenCalledWith({
         id: expect.stringContaining('batch_'),
         params: {
           texts,

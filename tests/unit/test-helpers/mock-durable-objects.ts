@@ -39,7 +39,12 @@ export function createMockVectorManager() {
     // Job management
     getFileProcessingJobs: vi.fn(),
     getJobStatus: vi.fn(), // Used in status.test.ts
-    getAllJobs: vi.fn() // Used in status.test.ts
+    getAllJobs: vi.fn(), // Used in status.test.ts
+    
+    // File processing methods
+    getFileProcessingJob: vi.fn(),
+    getFileProcessingWorkflowStatus: vi.fn(),
+    processFileAsync: vi.fn()
   }
 }
 

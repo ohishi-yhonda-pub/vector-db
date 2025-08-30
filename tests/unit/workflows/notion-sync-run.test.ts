@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { setupWorkflowTest } from '../test-helpers'
 
 // First, set up all mocks before any imports
 const mockNotionServiceInstance = {
@@ -50,11 +51,11 @@ import { NotionSyncWorkflow } from '../../../src/workflows/notion-sync'
 
 describe('NotionSyncWorkflow - Run Method Tests', () => {
   let workflow: NotionSyncWorkflow
-  let mockEnv: any
-  let mockStep: any
+  let testSetup: ReturnType<typeof setupWorkflowTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    testSetup = setupWorkflowTest()
     
     // Reset mock implementations
     mockVectorManager.createVectorAsync.mockResolvedValue({ jobId: 'vec-123' })
@@ -63,28 +64,26 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.savePageProperties.mockResolvedValue(undefined)
     mockNotionServiceInstance.saveBlocks.mockResolvedValue(undefined)
     
-    mockEnv = {
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      VECTOR_CACHE: {
-        idFromName: vi.fn().mockReturnValue('vector-manager-id'),
-        get: vi.fn().mockReturnValue(mockVectorManager)
-      }
+    // Add additional properties to mockEnv
+    testSetup.mockEnv.DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-base-en-v1.5'
+    testSetup.mockEnv.VECTOR_CACHE = {
+      idFromName: vi.fn().mockReturnValue('vector-manager-id'),
+      get: vi.fn().mockReturnValue(mockVectorManager)
     }
 
-    mockStep = {
-      do: vi.fn().mockImplementation(async (name: string, fn: () => any) => {
-        try {
-          return await fn()
-        } catch (error) {
-          if (name === 'fetch-and-save-page') {
-            throw error // Re-throw to trigger error handling
-          }
-          throw error
+    // Override mockStep behavior for this specific test
+    testSetup.mockStep.do = vi.fn().mockImplementation(async (name: string, fn: () => any) => {
+      try {
+        return await fn()
+      } catch (error) {
+        if (name === 'fetch-and-save-page') {
+          throw error // Re-throw to trigger error handling
         }
-      })
-    }
+        throw error
+      }
+    })
 
-    workflow = new NotionSyncWorkflow({} as any, mockEnv)
+    workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   afterEach(() => {
@@ -140,7 +139,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchBlocksFromNotion.mockResolvedValueOnce(mockBlocks)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.pageId).toBe('page-123')
@@ -149,11 +148,11 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     expect(result.vectorsCreated).toBeGreaterThan(0)
     
     // Verify the workflow steps were called
-    expect(mockStep.do).toHaveBeenCalledWith('fetch-and-save-page', expect.any(Function))
-    expect(mockStep.do).toHaveBeenCalledWith('vectorize-page-title', expect.any(Function))
-    expect(mockStep.do).toHaveBeenCalledWith('process-properties', expect.any(Function))
-    expect(mockStep.do).toHaveBeenCalledWith('process-blocks', expect.any(Function))
-    expect(mockStep.do).toHaveBeenCalledWith('complete-sync-job', expect.any(Function))
+    expect(testSetup.mockStep.do).toHaveBeenCalledWith('fetch-and-save-page', expect.any(Function))
+    expect(testSetup.mockStep.do).toHaveBeenCalledWith('vectorize-page-title', expect.any(Function))
+    expect(testSetup.mockStep.do).toHaveBeenCalledWith('process-properties', expect.any(Function))
+    expect(testSetup.mockStep.do).toHaveBeenCalledWith('process-blocks', expect.any(Function))
+    expect(testSetup.mockStep.do).toHaveBeenCalledWith('complete-sync-job', expect.any(Function))
   })
 
   it('should handle page not found', async () => {
@@ -167,11 +166,11 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(null)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('Page non-existent not found')
-    expect(mockStep.do).toHaveBeenCalledWith('record-error', expect.any(Function))
+    expect(testSetup.mockStep.do).toHaveBeenCalledWith('record-error', expect.any(Function))
   })
 
   it('should handle API errors', async () => {
@@ -185,11 +184,11 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockRejectedValueOnce(new Error('Notion API Error'))
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('Notion API Error')
-    expect(mockStep.do).toHaveBeenCalledWith('record-error', expect.any(Function))
+    expect(testSetup.mockStep.do).toHaveBeenCalledWith('record-error', expect.any(Function))
   })
 
   it('should handle non-Error exceptions', async () => {
@@ -205,7 +204,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     })
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('Sync failed')
@@ -233,7 +232,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.blocksProcessed).toBe(0)
@@ -262,11 +261,11 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.propertiesProcessed).toBe(0)
-    expect(mockStep.do).not.toHaveBeenCalledWith('process-properties', expect.any(Function))
+    expect(testSetup.mockStep.do).not.toHaveBeenCalledWith('process-properties', expect.any(Function))
   })
 
   it('should handle pages without title property', async () => {
@@ -291,7 +290,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.vectorsCreated).toBe(1) // Only the rich_text property
@@ -319,7 +318,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.vectorsCreated).toBe(0) // No vectors created for empty title
@@ -348,7 +347,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchBlocksFromNotion.mockRejectedValueOnce(new Error('Blocks fetch failed'))
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('Blocks fetch failed')
@@ -389,7 +388,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchBlocksFromNotion.mockResolvedValueOnce(mockBlocks)
 
     const event = { payload: params, timestamp: new Date() }
-    await workflow.run(event as any, mockStep)
+    await workflow.run(event as any, testSetup.mockStep)
 
     // Check that the default namespaces were used
     expect(mockVectorManager.createVectorAsync).toHaveBeenCalledWith(
@@ -430,7 +429,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.propertiesProcessed).toBe(3)
@@ -482,7 +481,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchBlocksFromNotion.mockResolvedValueOnce(mockBlocks)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.blocksProcessed).toBe(3) // All blocks processed
@@ -515,7 +514,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.propertiesProcessed).toBe(2)
@@ -548,7 +547,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.propertiesProcessed).toBe(2)
@@ -578,7 +577,7 @@ describe('NotionSyncWorkflow - Run Method Tests', () => {
     mockNotionServiceInstance.savePage.mockRejectedValueOnce(new Error('Save failed'))
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(false)
     expect(result.error).toBe('Save failed')

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { setupWorkflowTest } from '../test-helpers'
 
 // Mock cloudflare:workers
 vi.mock('cloudflare:workers', () => ({
@@ -22,16 +23,19 @@ import { NotionSyncWorkflow } from '../../../src/workflows/notion-sync'
 
 describe('NotionSyncWorkflow - extractPlainTextFromBlock', () => {
   let workflow: NotionSyncWorkflow
-  const mockEnv = {
-    VECTOR_CACHE: {
-      idFromName: vi.fn(),
-      get: vi.fn()
-    },
-    DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5'
-  }
+  let testSetup: ReturnType<typeof setupWorkflowTest>
 
   beforeEach(() => {
-    workflow = new NotionSyncWorkflow({} as any, mockEnv as any)
+    testSetup = setupWorkflowTest()
+    
+    // Add additional properties to mockEnv
+    testSetup.mockEnv.VECTOR_CACHE = {
+      idFromName: vi.fn(),
+      get: vi.fn()
+    }
+    testSetup.mockEnv.DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-base-en-v1.5'
+    
+    workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   it('should extract text from paragraph blocks', () => {

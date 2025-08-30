@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import { retrieveNotionPageRoute, retrieveNotionPageHandler } from '../../../../src/routes/api/notion/retrieve-page'
+import { setupNotionRouteTest, createMockRequest } from '../../test-helpers'
 
 // Mock NotionService methods
 const mockGetPage = vi.fn()
@@ -16,35 +16,12 @@ vi.mock('../../../../src/services/notion.service', () => ({
 }))
 
 describe('Retrieve Notion Page Route', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupNotionRouteTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
-    
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: 'test-notion-api-key',
-      AI: {} as any,
-      VECTORIZE_INDEX: {} as any,
-      VECTOR_CACHE: {} as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as any,
-      EMBEDDINGS_WORKFLOW: {} as any,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as any,
-      VECTOR_OPERATIONS_WORKFLOW: {} as any,
-      FILE_PROCESSING_WORKFLOW: {} as any,
-      NOTION_SYNC_WORKFLOW: {} as any
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(retrieveNotionPageRoute, retrieveNotionPageHandler)
+    testSetup = setupNotionRouteTest()
+    testSetup.app.openapi(retrieveNotionPageRoute, retrieveNotionPageHandler)
   })
 
   describe('GET /notion/pages/{pageId}', () => {
@@ -67,11 +44,11 @@ describe('Retrieve Notion Page Route', () => {
 
       mockGetPage.mockResolvedValue(mockCachedPage)
 
-      const request = new Request('http://localhost/notion/pages/page-123', {
+      const request = createMockRequest('http://localhost/notion/pages/page-123', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -117,11 +94,11 @@ describe('Retrieve Notion Page Route', () => {
       mockFetchPageFromNotion.mockResolvedValue(mockNotionPage)
       mockSavePage.mockResolvedValue(undefined)
 
-      const request = new Request('http://localhost/notion/pages/page-456', {
+      const request = createMockRequest('http://localhost/notion/pages/page-456', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -150,11 +127,11 @@ describe('Retrieve Notion Page Route', () => {
 
       mockGetPage.mockResolvedValue(mockCachedPage)
 
-      const request = new Request('http://localhost/notion/pages/page-789?fromCache=true', {
+      const request = createMockRequest('http://localhost/notion/pages/page-789?fromCache=true', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -164,13 +141,13 @@ describe('Retrieve Notion Page Route', () => {
     })
 
     it('should handle missing Notion API key', async () => {
-      mockEnv.NOTION_API_KEY = ''
+      testSetup.mockEnv.NOTION_API_KEY = ''
 
-      const request = new Request('http://localhost/notion/pages/page-123', {
+      const request = createMockRequest('http://localhost/notion/pages/page-123', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(401)
@@ -185,11 +162,11 @@ describe('Retrieve Notion Page Route', () => {
       mockGetPage.mockResolvedValue(null)
       mockFetchPageFromNotion.mockResolvedValue(null)
 
-      const request = new Request('http://localhost/notion/pages/not-found', {
+      const request = createMockRequest('http://localhost/notion/pages/not-found', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
@@ -203,11 +180,11 @@ describe('Retrieve Notion Page Route', () => {
     it('should handle page not found when fromCache is true', async () => {
       mockGetPage.mockResolvedValue(null)
 
-      const request = new Request('http://localhost/notion/pages/not-found?fromCache=true', {
+      const request = createMockRequest('http://localhost/notion/pages/not-found?fromCache=true', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
@@ -233,11 +210,11 @@ describe('Retrieve Notion Page Route', () => {
 
       mockGetPage.mockResolvedValue(mockCachedPage)
 
-      const request = new Request('http://localhost/notion/pages/page-null-url', {
+      const request = createMockRequest('http://localhost/notion/pages/page-null-url', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -247,11 +224,11 @@ describe('Retrieve Notion Page Route', () => {
     it('should handle errors from NotionService', async () => {
       mockGetPage.mockRejectedValue(new Error('Database connection error'))
 
-      const request = new Request('http://localhost/notion/pages/page-error', {
+      const request = createMockRequest('http://localhost/notion/pages/page-error', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -265,11 +242,11 @@ describe('Retrieve Notion Page Route', () => {
     it('should handle non-Error exceptions', async () => {
       mockGetPage.mockRejectedValue('String error')
 
-      const request = new Request('http://localhost/notion/pages/page-error', {
+      const request = createMockRequest('http://localhost/notion/pages/page-error', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -297,11 +274,11 @@ describe('Retrieve Notion Page Route', () => {
       mockGetPage.mockResolvedValue(mockApiPage)
       mockFetchPageFromNotion.mockResolvedValue(mockApiPage)
 
-      const request = new Request('http://localhost/notion/pages/page-api', {
+      const request = createMockRequest('http://localhost/notion/pages/page-api', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -317,11 +294,11 @@ describe('Retrieve Notion Page Route', () => {
       mockGetPage.mockResolvedValue(mockApiPage)
       mockFetchPageFromNotion.mockResolvedValue(null)
 
-      const request = new Request('http://localhost/notion/pages/page-api-notfound', {
+      const request = createMockRequest('http://localhost/notion/pages/page-api-notfound', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
@@ -347,12 +324,12 @@ describe('Retrieve Notion Page Route', () => {
 
       mockGetPage.mockResolvedValue(mockCachedPage)
 
-      const request = new Request('http://localhost/notion/pages/page-default-cache', {
+      const request = createMockRequest('http://localhost/notion/pages/page-default-cache', {
         method: 'GET'
         // No query parameters - fromCache should default to false
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -379,11 +356,11 @@ describe('Retrieve Notion Page Route', () => {
 
       mockGetPage.mockResolvedValue(mockCachedPage)
 
-      const request = new Request('http://localhost/notion/pages/page-explicit-false?fromCache=false', {
+      const request = createMockRequest('http://localhost/notion/pages/page-explicit-false?fromCache=false', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -410,11 +387,11 @@ describe('Retrieve Notion Page Route', () => {
 
       mockGetPage.mockResolvedValue(mockCachedPage)
 
-      const request = new Request('http://localhost/notion/pages/page-other-value?fromCache=invalid', {
+      const request = createMockRequest('http://localhost/notion/pages/page-other-value?fromCache=invalid', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -442,11 +419,11 @@ describe('Retrieve Notion Page Route', () => {
 
       mockGetPage.mockResolvedValue(mockCachedPage)
 
-      const request = new Request('http://localhost/notion/pages/page-empty-cache?fromCache=', {
+      const request = createMockRequest('http://localhost/notion/pages/page-empty-cache?fromCache=', {
         method: 'GET'
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)

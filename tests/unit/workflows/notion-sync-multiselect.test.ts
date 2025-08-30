@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { setupWorkflowTest } from '../test-helpers'
 
 // First, set up all mocks before any imports
 const mockNotionServiceInstance = {
@@ -50,11 +51,11 @@ import { NotionSyncWorkflow } from '../../../src/workflows/notion-sync'
 
 describe('NotionSyncWorkflow - Multi-Select Coverage', () => {
   let workflow: NotionSyncWorkflow
-  let mockEnv: any
-  let mockStep: any
+  let testSetup: ReturnType<typeof setupWorkflowTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
+    testSetup = setupWorkflowTest()
     
     // Reset mock implementations
     mockVectorManager.createVectorAsync.mockResolvedValue({ jobId: 'vec-123' })
@@ -63,28 +64,26 @@ describe('NotionSyncWorkflow - Multi-Select Coverage', () => {
     mockNotionServiceInstance.savePageProperties.mockResolvedValue(undefined)
     mockNotionServiceInstance.saveBlocks.mockResolvedValue(undefined)
     
-    mockEnv = {
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      VECTOR_CACHE: {
-        idFromName: vi.fn().mockReturnValue('vector-manager-id'),
-        get: vi.fn().mockReturnValue(mockVectorManager)
-      }
+    // Add additional properties to mockEnv
+    testSetup.mockEnv.DEFAULT_EMBEDDING_MODEL = '@cf/baai/bge-base-en-v1.5'
+    testSetup.mockEnv.VECTOR_CACHE = {
+      idFromName: vi.fn().mockReturnValue('vector-manager-id'),
+      get: vi.fn().mockReturnValue(mockVectorManager)
     }
 
-    mockStep = {
-      do: vi.fn().mockImplementation(async (name: string, fn: () => any) => {
-        try {
-          return await fn()
-        } catch (error) {
-          if (name === 'fetch-and-save-page') {
-            throw error
-          }
+    // Override mockStep behavior for this specific test
+    testSetup.mockStep.do = vi.fn().mockImplementation(async (name: string, fn: () => any) => {
+      try {
+        return await fn()
+      } catch (error) {
+        if (name === 'fetch-and-save-page') {
           throw error
         }
-      })
-    }
+        throw error
+      }
+    })
 
-    workflow = new NotionSyncWorkflow({} as any, mockEnv)
+    workflow = new NotionSyncWorkflow(testSetup.mockCtx, testSetup.mockEnv)
   })
 
   afterEach(() => {
@@ -122,7 +121,7 @@ describe('NotionSyncWorkflow - Multi-Select Coverage', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.propertiesProcessed).toBe(2) // Title and Tags
@@ -165,7 +164,7 @@ describe('NotionSyncWorkflow - Multi-Select Coverage', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.propertiesProcessed).toBe(2)
@@ -210,7 +209,7 @@ describe('NotionSyncWorkflow - Multi-Select Coverage', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.vectorsCreated).toBe(3) // Title vector + Title property vector + Labels vector
@@ -268,7 +267,7 @@ describe('NotionSyncWorkflow - Multi-Select Coverage', () => {
     mockNotionServiceInstance.fetchPageFromNotion.mockResolvedValueOnce(mockPage)
 
     const event = { payload: params, timestamp: new Date() }
-    const result = await workflow.run(event as any, mockStep)
+    const result = await workflow.run(event as any, testSetup.mockStep)
 
     expect(result.success).toBe(true)
     expect(result.propertiesProcessed).toBe(5) // All properties

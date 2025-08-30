@@ -1,48 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import { uploadFileRoute, uploadFileHandler } from '../../../../src/routes/api/files/upload'
-
-// Mock Vector Manager Durable Object
-const mockVectorManager = {
-  processFileAsync: vi.fn()
-}
-
-// Mock Durable Object namespace
-const mockVectorCacheNamespace = {
-  idFromName: vi.fn().mockReturnValue('mock-id'),
-  get: vi.fn().mockReturnValue(mockVectorManager)
-}
+import { setupFileProcessingRouteTest } from '../../test-helpers'
 
 describe('Upload File Route', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupFileProcessingRouteTest>
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: '',
-      AI: {} as any,
-      VECTORIZE_INDEX: {} as any,
-      VECTOR_CACHE: mockVectorCacheNamespace as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as any,
-      EMBEDDINGS_WORKFLOW: {} as Workflow,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as any,
-      VECTOR_OPERATIONS_WORKFLOW: {} as any,
-      FILE_PROCESSING_WORKFLOW: {} as any,
-      NOTION_SYNC_WORKFLOW: {} as any
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(uploadFileRoute, uploadFileHandler)
+    testSetup = setupFileProcessingRouteTest()
+    testSetup.app.openapi(uploadFileRoute, uploadFileHandler)
   })
 
   describe('POST /files/upload', () => {
@@ -53,7 +18,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       const pdfContent = new Uint8Array([0x25, 0x50, 0x44, 0x46]) // PDF header
@@ -65,11 +30,11 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(202)
-      expect(mockVectorManager.processFileAsync).toHaveBeenCalledWith(
+      expect(testSetup.mockVectorManager.processFileAsync).toHaveBeenCalledWith(
         expect.any(String), // base64 encoded file
         'test.pdf',
         'application/pdf',
@@ -100,7 +65,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       const imageContent = new Uint8Array([0xFF, 0xD8, 0xFF]) // JPEG header
@@ -114,11 +79,11 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(202)
-      expect(mockVectorManager.processFileAsync).toHaveBeenCalledWith(
+      expect(testSetup.mockVectorManager.processFileAsync).toHaveBeenCalledWith(
         expect.any(String),
         'test.jpg',
         'image/jpeg',
@@ -136,7 +101,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       const pngFile = new File([new Uint8Array([0x89, 0x50, 0x4E, 0x47])], 'test.png', { type: 'image/png' })
@@ -147,7 +112,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       expect(response.status).toBe(202)
     })
 
@@ -158,7 +123,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       const gifFile = new File([new Uint8Array([0x47, 0x49, 0x46])], 'test.gif', { type: 'image/gif' })
@@ -169,7 +134,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       expect(response.status).toBe(202)
     })
 
@@ -180,7 +145,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       const webpFile = new File([new Uint8Array([0x52, 0x49, 0x46, 0x46])], 'test.webp', { type: 'image/webp' })
@@ -191,7 +156,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       expect(response.status).toBe(202)
     })
 
@@ -204,7 +169,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(400)
@@ -224,7 +189,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(413)
@@ -245,7 +210,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(415)
@@ -267,7 +232,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(400)
@@ -283,7 +248,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       const pdfFile = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], 'test.pdf', { type: 'application/pdf' })
@@ -295,12 +260,12 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       expect(response.status).toBe(202)
     })
 
     it('should handle Durable Object errors', async () => {
-      mockVectorManager.processFileAsync.mockRejectedValue(new Error('Processing failed'))
+      testSetup.mockVectorManager.processFileAsync.mockRejectedValue(new Error('Processing failed'))
 
       const formData = new FormData()
       const pdfFile = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], 'test.pdf', { type: 'application/pdf' })
@@ -311,7 +276,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(500)
@@ -323,7 +288,7 @@ describe('Upload File Route', () => {
     })
 
     it('should handle non-Error exceptions', async () => {
-      mockVectorManager.processFileAsync.mockRejectedValue('String error')
+      testSetup.mockVectorManager.processFileAsync.mockRejectedValue('String error')
 
       const formData = new FormData()
       const pdfFile = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], 'test.pdf', { type: 'application/pdf' })
@@ -334,7 +299,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(500)
@@ -348,7 +313,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       const pdfFile = new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], 'test-file_2024.pdf', { type: 'application/pdf' })
@@ -359,7 +324,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(202)
@@ -376,7 +341,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(400)
@@ -392,7 +357,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       // Use direct Japanese characters in filename
@@ -404,7 +369,7 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(202)
@@ -420,7 +385,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       // Create a filename with percent encoding but only ASCII characters
@@ -433,12 +398,12 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(202)
       // Should keep original filename since decoded version has no Japanese characters
-      expect(mockVectorManager.processFileAsync).toHaveBeenCalledWith(
+      expect(testSetup.mockVectorManager.processFileAsync).toHaveBeenCalledWith(
         expect.any(String),
         'test%20file.pdf', // Should keep original
         'application/pdf',
@@ -455,7 +420,7 @@ describe('Upload File Route', () => {
         status: 'processing'
       }
 
-      mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+      testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
       const formData = new FormData()
       // Create a filename with malformed percent encoding
@@ -468,12 +433,12 @@ describe('Upload File Route', () => {
         body: formData
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any as any
 
       expect(response.status).toBe(202)
       // Should keep original filename when decoding fails
-      expect(mockVectorManager.processFileAsync).toHaveBeenCalledWith(
+      expect(testSetup.mockVectorManager.processFileAsync).toHaveBeenCalledWith(
         expect.any(String),
         'test%ZZinvalid.pdf', // Should keep original on decode error
         'application/pdf',
@@ -488,36 +453,12 @@ describe('Upload File Route', () => {
 
 // Additional tests to cover edge cases for better branch coverage
 describe('Upload File Edge Cases', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupFileProcessingRouteTest>
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: '',
-      AI: {} as any,
-      VECTORIZE_INDEX: {} as any,
-      VECTOR_CACHE: mockVectorCacheNamespace as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: {} as any,
-      DB: {} as any,
-      EMBEDDINGS_WORKFLOW: {} as Workflow,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as any,
-      VECTOR_OPERATIONS_WORKFLOW: {} as any,
-      FILE_PROCESSING_WORKFLOW: {} as any,
-      NOTION_SYNC_WORKFLOW: {} as any
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
+    testSetup = setupFileProcessingRouteTest()
     // Use the handler directly to bypass route validation for edge case testing
-    app.post('/files/upload', uploadFileHandler)
+    testSetup.app.post('/files/upload', uploadFileHandler)
   })
 
   it('should handle FormData with non-File value after validation bypass', async () => {
@@ -544,7 +485,7 @@ describe('Upload File Edge Cases', () => {
         status: status || 200,
         json: async () => data 
       })),
-      env: mockEnv
+      env: testSetup.mockEnv
     } as any
 
     const response = await uploadFileHandler(c, {} as any)
@@ -566,7 +507,7 @@ describe('Upload File Edge Cases', () => {
       status: 'processing'
     }
 
-    mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+    testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
     // Create filename with Japanese characters encoded as Latin-1 bytes
     // This simulates what happens when a browser encodes Japanese characters incorrectly
@@ -581,17 +522,17 @@ describe('Upload File Edge Cases', () => {
     const file = new File(['test'], latin1Name, { type: 'application/pdf' })
     formData.append('file', file)
 
-    const response = await app.request('/files/upload', {
+    const response = await testSetup.app.request('/files/upload', {
       method: 'POST',
       body: formData
-    }, mockEnv)
+    }, testSetup.mockEnv)
 
     expect(response.status).toBe(202)
     const result = await response.json() as any
     expect(result.success).toBe(true)
     
     // The handler should decode the filename and detect Japanese characters
-    expect(mockVectorManager.processFileAsync).toHaveBeenCalledWith(
+    expect(testSetup.mockVectorManager.processFileAsync).toHaveBeenCalledWith(
       expect.any(String),
       japaneseText, // Decoded Japanese filename
       'application/pdf',
@@ -608,7 +549,7 @@ describe('Upload File Edge Cases', () => {
       status: 'processing'
     }
 
-    mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+    testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
     // Create a filename with invalid UTF-8 sequence (unpaired surrogate)
     // This will cause TextDecoder to fail
@@ -622,17 +563,17 @@ describe('Upload File Edge Cases', () => {
     const file = new File(['test'], invalidUtf8Name, { type: 'application/pdf' })
     formData.append('file', file)
 
-    const response = await app.request('/files/upload', {
+    const response = await testSetup.app.request('/files/upload', {
       method: 'POST',
       body: formData
-    }, mockEnv)
+    }, testSetup.mockEnv)
 
     expect(response.status).toBe(202)
     const result = await response.json() as any
     expect(result.success).toBe(true)
     
     // The handler successfully decodes even with some invalid bytes, replacing them with �
-    expect(mockVectorManager.processFileAsync).toHaveBeenCalledWith(
+    expect(testSetup.mockVectorManager.processFileAsync).toHaveBeenCalledWith(
       expect.any(String),
       expect.stringContaining('スト'), // Partially decoded with replacement chars
       'application/pdf',
@@ -649,7 +590,7 @@ describe('Upload File Edge Cases', () => {
       status: 'processing'
     }
 
-    mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
+    testSetup.mockVectorManager.processFileAsync.mockResolvedValue(mockResult)
 
     // Mock TextDecoder to throw an error
     const originalTextDecoder = global.TextDecoder
@@ -667,17 +608,17 @@ describe('Upload File Edge Cases', () => {
     const file = new File(['test'], latin1Name, { type: 'application/pdf' })
     formData.append('file', file)
 
-    const response = await app.request('/files/upload', {
+    const response = await testSetup.app.request('/files/upload', {
       method: 'POST',
       body: formData
-    }, mockEnv)
+    }, testSetup.mockEnv)
 
     expect(response.status).toBe(202)
     const result = await response.json() as any
     expect(result.success).toBe(true)
     
     // Should use original filename when TextDecoder fails
-    expect(mockVectorManager.processFileAsync).toHaveBeenCalledWith(
+    expect(testSetup.mockVectorManager.processFileAsync).toHaveBeenCalledWith(
       expect.any(String),
       latin1Name, // Original filename since decoding failed
       'application/pdf',

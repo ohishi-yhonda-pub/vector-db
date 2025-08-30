@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { Hono } from 'hono'
-import { OpenAPIHono } from '@hono/zod-openapi'
 import { generateEmbeddingRoute, generateEmbeddingHandler } from '../../../src/routes/api/embeddings/generate'
+import { setupEmbeddingsRouteTest } from '../test-helpers/test-scenarios'
+import { createMockRequest } from '../test-helpers'
 
 // Mock AI Embeddings Durable Object
 const mockAIEmbeddings = {
@@ -15,38 +15,17 @@ const mockAIEmbeddingsNamespace = {
 }
 
 describe('Embeddings Routes', () => {
-  let app: OpenAPIHono<{ Bindings: Env }>
-  let mockEnv: Env
+  let testSetup: ReturnType<typeof setupEmbeddingsRouteTest>
 
   beforeEach(() => {
     vi.clearAllMocks()
     
-    mockEnv = {
-      ENVIRONMENT: 'development' as const,
-      DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
-      DEFAULT_TEXT_GENERATION_MODEL: '@cf/google/gemma-3-12b-it',
-      IMAGE_ANALYSIS_PROMPT: 'Describe this image in detail. Include any text visible in the image.',
-      IMAGE_ANALYSIS_MAX_TOKENS: '512',
-      TEXT_EXTRACTION_MAX_TOKENS: '1024',
-      NOTION_API_KEY: '',
-      AI: {} as Ai,
-      VECTORIZE_INDEX: {} as VectorizeIndex,
-      VECTOR_CACHE: {
-        idFromName: vi.fn().mockReturnValue('mock-vector-id'),
-        get: vi.fn().mockReturnValue({})
-      } as any,
-      NOTION_MANAGER: {} as any,
-      AI_EMBEDDINGS: mockAIEmbeddingsNamespace as any,
-      DB: {} as D1Database,
-      EMBEDDINGS_WORKFLOW: {} as Workflow,
-      BATCH_EMBEDDINGS_WORKFLOW: {} as Workflow,
-      VECTOR_OPERATIONS_WORKFLOW: {} as Workflow,
-      FILE_PROCESSING_WORKFLOW: {} as Workflow,
-      NOTION_SYNC_WORKFLOW: {} as Workflow
-    }
-
-    app = new OpenAPIHono<{ Bindings: Env }>()
-    app.openapi(generateEmbeddingRoute, generateEmbeddingHandler)
+    testSetup = setupEmbeddingsRouteTest()
+    
+    // Add AI_EMBEDDINGS mock for this specific test
+    testSetup.mockEnv.AI_EMBEDDINGS = mockAIEmbeddingsNamespace as any
+    
+    testSetup.app.openapi(generateEmbeddingRoute, generateEmbeddingHandler)
   })
 
   describe('POST /embeddings', () => {
@@ -59,16 +38,15 @@ describe('Embeddings Routes', () => {
 
       mockAIEmbeddings.generateEmbedding.mockResolvedValue(mockResult)
 
-      const request = new Request('http://localhost/embeddings', {
+      const request = createMockRequest('http://localhost/embeddings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           text: 'Generate embedding for this text',
           model: '@cf/baai/bge-base-en-v1.5'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
@@ -84,16 +62,15 @@ describe('Embeddings Routes', () => {
     })
 
     it('should return 400 for invalid request body', async () => {
-      const request = new Request('http://localhost/embeddings', {
+      const request = createMockRequest('http://localhost/embeddings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           // missing required text field
           model: '@cf/baai/bge-base-en-v1.5'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(400)
@@ -105,16 +82,15 @@ describe('Embeddings Routes', () => {
     it('should handle Durable Object errors', async () => {
       mockAIEmbeddings.generateEmbedding.mockRejectedValue(new Error('Durable Object error'))
 
-      const request = new Request('http://localhost/embeddings', {
+      const request = createMockRequest('http://localhost/embeddings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           text: 'Generate embedding for this text',
           model: '@cf/baai/bge-base-en-v1.5'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
@@ -126,16 +102,15 @@ describe('Embeddings Routes', () => {
     it('should handle non-Error exceptions', async () => {
       mockAIEmbeddings.generateEmbedding.mockRejectedValue('String error')
 
-      const request = new Request('http://localhost/embeddings', {
+      const request = createMockRequest('http://localhost/embeddings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: {
           text: 'Generate embedding for this text',
           model: '@cf/baai/bge-base-en-v1.5'
-        })
+        }
       })
 
-      const response = await app.fetch(request, mockEnv)
+      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
