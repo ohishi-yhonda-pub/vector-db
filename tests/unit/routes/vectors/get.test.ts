@@ -64,8 +64,8 @@ describe('Get Vector Route', () => {
       expect(response.status).toBe(404)
       expect(result).toEqual({
         success: false,
-        error: 'Not Found',
-        message: 'ベクトル non-existent が見つかりません'
+        code: 'NOT_FOUND',
+        error: 'ベクトル non-existent が見つかりません not found'
       })
     })
 
@@ -104,8 +104,10 @@ describe('Get Vector Route', () => {
       expect(response.status).toBe(500)
       expect(result).toEqual({
         success: false,
-        error: 'Internal Server Error',
-        message: 'Vectorize service error'
+        error: 'VECTORIZE_ERROR',
+        message: 'Vectorize service error',
+        path: '/vectors/test-id',
+        timestamp: expect.any(String)
       })
     })
 
@@ -120,7 +122,7 @@ describe('Get Vector Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result.message).toBe('ベクトル取得中にエラーが発生しました')
+      expect(result.message).toBe('An unexpected error occurred')
     })
 
     it('should handle vector with metadata', async () => {

@@ -1,23 +1,53 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { syncNotionPageRoute, syncNotionPageHandler } from '../../../../src/routes/api/notion/sync-page'
 import { setupNotionRouteTest, createMockRequest } from '../../test-helpers'
+
+// Mock NotionOrchestrator
+const mockSyncPage = vi.fn()
+
+vi.mock('../../../../src/services/notion-orchestrator', () => ({
+  NotionOrchestrator: vi.fn().mockImplementation(() => ({
+    syncPage: mockSyncPage
+  }))
+}))
 
 describe('Sync Notion Page Route', () => {
   let testSetup: ReturnType<typeof setupNotionRouteTest>
 
   beforeEach(() => {
+    vi.clearAllMocks()
     testSetup = setupNotionRouteTest()
     testSetup.app.openapi(syncNotionPageRoute, syncNotionPageHandler)
   })
 
   describe('POST /notion/pages/{pageId}/sync', () => {
     it('should sync page successfully with all options', async () => {
-      const mockJobResult = {
-        jobId: 'job-123',
-        status: 'processing'
+      const mockSyncResult = {
+        page: {
+          id: 'page-123',
+          object: 'page',
+          created_time: '2024-01-01T00:00:00.000Z',
+          last_edited_time: '2024-01-02T00:00:00.000Z',
+          archived: false,
+          url: 'https://notion.so/page-123',
+          properties: {
+            title: {
+              title: [{ plain_text: 'Test Page' }]
+            }
+          }
+        },
+        blocks: [
+          {
+            id: 'block-1',
+            type: 'paragraph',
+            paragraph: {
+              text: [{ plain_text: 'Block content' }]
+            }
+          }
+        ]
       }
       
-      testSetup.mockNotionManager.createSyncJob.mockResolvedValue(mockJobResult)
+      mockSyncPage.mockResolvedValue(mockSyncResult)
 
       const request = createMockRequest('http://localhost/notion/pages/page-123/sync', {
         method: 'POST',
@@ -35,29 +65,31 @@ describe('Sync Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(testSetup.mockNotionManager.createSyncJob).toHaveBeenCalledWith('page-123', {
-        includeBlocks: true,
-        includeProperties: true,
-        namespace: 'custom-namespace'
-      })
+      expect(mockSyncPage).toHaveBeenCalledWith('page-123')
       expect(result).toEqual({
         success: true,
         data: {
-          jobId: 'job-123',
-          pageId: 'page-123',
-          status: 'processing',
+          ...mockSyncResult,
           message: 'ページの同期処理を開始しました'
         }
       })
     })
 
     it('should sync page successfully with minimal options', async () => {
-      const mockJobResult = {
-        jobId: 'job-456',
-        status: 'queued'
+      const mockSyncResult = {
+        page: {
+          id: 'page-456',
+          object: 'page',
+          created_time: '2024-01-03T00:00:00.000Z',
+          last_edited_time: '2024-01-04T00:00:00.000Z',
+          archived: false,
+          url: 'https://notion.so/page-456',
+          properties: {}
+        },
+        blocks: []
       }
       
-      testSetup.mockNotionManager.createSyncJob.mockResolvedValue(mockJobResult)
+      mockSyncPage.mockResolvedValue(mockSyncResult)
 
       const request = createMockRequest('http://localhost/notion/pages/page-456/sync', {
         method: 'POST',
@@ -71,13 +103,8 @@ describe('Sync Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(testSetup.mockNotionManager.createSyncJob).toHaveBeenCalledWith('page-456', {
-        includeBlocks: true, // defaults to true from schema
-        includeProperties: true, // defaults to true from schema
-        namespace: undefined
-      })
-      expect(result.data.jobId).toBe('job-456')
-      expect(result.data.status).toBe('queued')
+      expect(mockSyncPage).toHaveBeenCalledWith('page-456')
+      expect(result.data.page.id).toBe('page-456')
     })
 
     it('should handle missing Notion API key', async () => {
@@ -97,42 +124,37 @@ describe('Sync Notion Page Route', () => {
       expect(response.status).toBe(401)
       expect(result).toEqual({
         success: false,
-        error: 'Unauthorized',
-        message: 'Notion APIトークンが設定されていません'
+        code: 'UNAUTHORIZED',
+        error: 'Notion APIトークンが設定されていません'
       })
     })
 
-    it('should handle sync with includeBlocks only', async () => {
-      const mockJobResult = {
-        jobId: 'job-789',
-        status: 'processing'
+    it('should handle page not found scenario', async () => {
+      const mockSyncResult = {
+        page: null,
+        blocks: []
       }
       
-      testSetup.mockNotionManager.createSyncJob.mockResolvedValue(mockJobResult)
+      mockSyncPage.mockResolvedValue(mockSyncResult)
 
-      const request = createMockRequest('http://localhost/notion/pages/page-789/sync', {
+      const request = createMockRequest('http://localhost/notion/pages/not-found/sync', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: {
-          includeBlocks: true
-        }
+        body: {}
       })
 
       const response = await testSetup.app.fetch(request, testSetup.mockEnv)
       const result = await response.json() as any
 
       expect(response.status).toBe(202)
-      expect(testSetup.mockNotionManager.createSyncJob).toHaveBeenCalledWith('page-789', {
-        includeBlocks: true,
-        includeProperties: true, // defaults to true from schema
-        namespace: undefined
-      })
+      expect(result.data.page).toBeNull()
+      expect(result.data.blocks).toEqual([])
     })
 
-    it('should handle errors from createSyncJob', async () => {
-      testSetup.mockNotionManager.createSyncJob.mockRejectedValue(new Error('Sync job creation failed'))
+    it('should handle sync errors', async () => {
+      mockSyncPage.mockRejectedValue(new Error('Sync failed'))
 
       const request = createMockRequest('http://localhost/notion/pages/page-error/sync', {
         method: 'POST',
@@ -148,13 +170,15 @@ describe('Sync Notion Page Route', () => {
       expect(response.status).toBe(500)
       expect(result).toEqual({
         success: false,
-        error: 'Internal Server Error',
-        message: 'Sync job creation failed'
+        error: 'INTERNAL_ERROR',
+        message: 'Sync failed',
+        path: '/notion/pages/page-error/sync',
+        timestamp: expect.any(String)
       })
     })
 
     it('should handle non-Error exceptions', async () => {
-      testSetup.mockNotionManager.createSyncJob.mockRejectedValue('String error')
+      mockSyncPage.mockRejectedValue('String error')
 
       const request = createMockRequest('http://localhost/notion/pages/page-error/sync', {
         method: 'POST',
@@ -168,7 +192,7 @@ describe('Sync Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result.message).toBe('同期処理の開始中にエラーが発生しました')
+      expect(result.message).toBe('An unexpected error occurred')
     })
 
 
@@ -184,31 +208,6 @@ describe('Sync Notion Page Route', () => {
       const response = await testSetup.app.fetch(request, testSetup.mockEnv)
 
       expect(response.status).toBe(400)
-    })
-
-    it('should handle different sync job statuses', async () => {
-      const mockJobResult = {
-        jobId: 'job-status',
-        status: 'completed'
-      }
-      
-      testSetup.mockNotionManager.createSyncJob.mockResolvedValue(mockJobResult)
-
-      const request = createMockRequest('http://localhost/notion/pages/page-status/sync', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: {
-          namespace: 'test-namespace'
-        }
-      })
-
-      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
-      const result = await response.json() as any
-
-      expect(response.status).toBe(202)
-      expect(result.data.status).toBe('completed')
     })
   })
 })

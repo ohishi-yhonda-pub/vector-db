@@ -2,29 +2,16 @@ import { createRoute, RouteHandler } from '@hono/zod-openapi'
 import { z } from '@hono/zod-openapi'
 import {
   FileProcessingResponseSchema,
-  SupportedFileTypes,
   type FileProcessingResponse
 } from '../../../schemas/file-upload.schema'
 import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
+import { FileValidator } from './file-validator'
+import { FileProcessor } from './file-processor'
 
 // 環境の型定義
 type EnvType = {
   Bindings: Env
 }
-
-// メタデータのバリデーションスキーマ
-const MetadataSchema = z.string().nullable().optional().transform((val, ctx) => {
-  if (!val) return {}
-  try {
-    return JSON.parse(val)
-  } catch {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'メタデータのバリデーションに失敗しました'
-    })
-    return z.NEVER
-  }
-})
 
 // ファイルアップロードルート定義
 export const uploadFileRoute = createRoute({
@@ -105,19 +92,21 @@ export const uploadFileRoute = createRoute({
 // ファイルアップロードハンドラー
 export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = async (c) => {
   try {
-    // リクエストヘッダーの確認
-    const contentType = c.req.header('content-type')
-    console.log('Request headers:', {
-      'content-type': contentType,
+    // リクエストヘッダーのログ出力
+    FileProcessor.logRequestHeaders({
+      'content-type': c.req.header('content-type'),
       'content-length': c.req.header('content-length'),
       'accept-charset': c.req.header('accept-charset')
     })
     
+    // フォームデータの取得
     const formData = await c.req.formData()
     const file = formData.get('file')
+    const namespace = formData.get('namespace') as string | null
+    const metadataStr = formData.get('metadata') as string | null
     
-    // Fileオブジェクトかどうか確認
-    if (!(file instanceof File)) {
+    // ファイルのバリデーション
+    if (!FileValidator.validateFile(file)) {
       console.error('Not a File object:', file)
       return c.json<ErrorResponse, 400>({
         success: false,
@@ -125,107 +114,45 @@ export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = 
         message: 'ファイルが正しくアップロードされていません'
       }, 400)
     }
-    const namespace = formData.get('namespace') as string | null
-    const metadataStr = formData.get('metadata') as string | null
     
-    // File オブジェクトの詳細をログ出力
-    console.log('File object:', {
-      name: file.name,
-      type: file.type,
-      size: file.size,
-      lastModified: file.lastModified,
-      // File APIの他のプロパティも確認
-      constructor: file.constructor.name
-    })
+    // ファイル情報のログ出力
+    FileProcessor.logFileInfo(file)
     
-    // ファイル名のデコード処理（文字化け対策）
-    let fileName = file.name
-    console.log('Original filename:', fileName)
-    console.log('Filename char codes:', Array.from(fileName).map(c => c.charCodeAt(0)))
+    // ファイル名のデコード
+    const fileName = FileProcessor.decodeFileName(file.name)
     
-    try {
-      // Latin-1として解釈された文字を元のバイト列に戻す
-      const originalBytes = new Uint8Array(fileName.length)
-      for (let i = 0; i < fileName.length; i++) {
-        originalBytes[i] = fileName.charCodeAt(i)
-      }
-      
-      // UTF-8としてデコードし直す
-      const decoder = new TextDecoder('utf-8')
-      const decodedName = decoder.decode(originalBytes)
-      console.log('Decoded filename:', decodedName)
-      // 正常にデコードできたか確認（日本語文字が含まれているか）
-      if (/[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(decodedName)) {
-        fileName = decodedName
-        console.log('Using decoded filename:', fileName)
-      } else {
-        console.log('No Japanese characters found in decoded name')
-      }
-    } catch (error) {
-      // デコードに失敗した場合は元のファイル名を使用
-      console.log('Failed to decode filename, using original:', fileName, error)
-    }
-
-    // ファイルサイズチェック (10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      return c.json<ErrorResponse, 413>({
-        success: false,
-        error: 'Payload Too Large',
-        message: 'ファイルサイズは10MB以下にしてください'
-      }, 413)
-    }
-
-    // ファイルタイプチェック
-    const fileType = file.type
-    const supportedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/gif', 'image/webp']
-    if (!supportedTypes.includes(fileType)) {
-      return c.json<ErrorResponse, 415>({
-        success: false,
-        error: 'Unsupported Media Type',
-        message: `サポートされていないファイル形式です: ${fileType}`
-      }, 415)
-    }
-
-    // メタデータのパースとバリデーション
-    const parseResult = MetadataSchema.safeParse(metadataStr)
-    if (!parseResult.success) {
-      const firstError = parseResult.error.issues[0]
-      return c.json<ErrorResponse, 400>({
-        success: false,
-        error: 'Bad Request',
-        message: firstError.message
-      }, 400)
-    }
-    const validatedMetadata = parseResult.data
-
-    // ファイルをBase64エンコード（大きなファイル対応）
-    const arrayBuffer = await file.arrayBuffer()
-    const uint8Array = new Uint8Array(arrayBuffer)
-    
-    // バイナリ文字列を作成（チャンクごとに処理）
-    const chunkSize = 8192
-    let binaryString = ''
-    for (let i = 0; i < uint8Array.length; i += chunkSize) {
-      const chunk = uint8Array.slice(i, Math.min(i + chunkSize, uint8Array.length))
-      binaryString += String.fromCharCode(...chunk)
+    // ファイルサイズのバリデーション
+    const sizeValidation = FileValidator.validateFileSize(file)
+    if (!sizeValidation.valid) {
+      return c.json<ErrorResponse, 413>(sizeValidation.error!, 413)
     }
     
-    // 全体を一度にBase64エンコード
-    const fileDataBase64 = btoa(binaryString)
-
+    // ファイルタイプのバリデーション
+    const typeValidation = FileValidator.validateFileType(file)
+    if (!typeValidation.valid) {
+      return c.json<ErrorResponse, 415>(typeValidation.error!, 415)
+    }
+    
+    // メタデータのバリデーション
+    const metadataValidation = FileValidator.validateMetadata(metadataStr)
+    if (!metadataValidation.valid) {
+      return c.json<ErrorResponse, 400>(metadataValidation.error!, 400)
+    }
+    
+    // ファイルをBase64エンコード
+    const fileDataBase64 = await FileProcessor.encodeFileToBase64(file)
+    
     // VectorManagerを使用してファイルを処理
-    const vectorManagerId = c.env.VECTOR_CACHE.idFromName('global')
-    const vectorManager = c.env.VECTOR_CACHE.get(vectorManagerId)
-    
-    const result = await vectorManager.processFileAsync(
+    const result = await FileProcessor.processWithVectorManager(
+      c.env,
       fileDataBase64,
-      fileName,  // デコード済みのファイル名を使用
+      fileName,
       file.type,
       file.size,
       namespace || undefined,
-      validatedMetadata
+      metadataValidation.data
     )
-
+    
     return c.json<FileProcessingResponse, 202>({
       success: true,
       data: {
@@ -233,7 +160,7 @@ export const uploadFileHandler: RouteHandler<typeof uploadFileRoute, EnvType> = 
         workflowId: result.workflowId,
         status: result.status,
         fileInfo: {
-          name: fileName,  // デコード済みのファイル名を使用
+          name: fileName,
           type: file.type,
           size: file.size
         },

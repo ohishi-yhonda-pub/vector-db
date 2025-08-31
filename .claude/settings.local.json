@@ -1,27 +1,19 @@
 {
   "permissions": {
     "allow": [
-      "Bash(yarn typecheck)",
-      "Bash(yarn build)",
-      "Bash(wrangler types:*)",
-      "Bash(npx wrangler:*)",
-      "Bash(yarn test)",
       "Bash(yarn test:*)",
-      "Bash(yarn vitest run:*)",
-      "Bash(ls:*)",
-      "WebFetch(domain:github.com)",
-      "WebFetch(domain:raw.githubusercontent.com)",
-      "WebFetch(domain:developers.cloudflare.com)",
-      "Bash(npx vitest run:*)",
-      "WebFetch(domain:)",
-      "Bash(npx tsc:*)",
-      "Bash(npm test:*)",
-      "Read(/c:\\c\\node/**)",
-      "Read(/c:\\c\\node/**)",
-      "Read(/c:\\c\\node/**)",
+      "Bash(yarn coverage:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(grep:*)",
+      "Bash(tail:*)",
+      "Bash(yarn run:*)",
+      "Bash(rg:*)",
       "Bash(cat:*)",
-      "Bash(sed:*)"
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ],
-    "deny": []
+    "deny": [],
+    "ask": []
   }
 }

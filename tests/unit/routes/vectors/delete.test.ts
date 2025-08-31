@@ -39,8 +39,7 @@ describe('Delete Vector Route', () => {
         data: {
           jobId: 'job-delete-123',
           workflowId: 'workflow-delete-456',
-          status: 'processing',
-          message: 'ベクトルの削除を開始しました'
+          status: 'processing'
         }
       })
     })
@@ -83,8 +82,10 @@ describe('Delete Vector Route', () => {
       expect(response.status).toBe(500)
       expect(result).toEqual({
         success: false,
-        error: 'Internal Server Error',
-        message: 'VectorManager error'
+        error: 'INTERNAL_ERROR',
+        message: 'VectorManager error',
+        path: '/vectors/test-id',
+        timestamp: expect.any(String)
       })
     })
 
@@ -99,7 +100,7 @@ describe('Delete Vector Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result.message).toBe('ベクトルの削除中にエラーが発生しました')
+      expect(result.message).toBe('An unexpected error occurred')
     })
 
     it('should handle empty ID parameter', async () => {

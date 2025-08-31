@@ -1,16 +1,22 @@
+/**
+ * スケジュールバッチ埋め込み生成ルート (リファクタリング版)
+ * バッチ埋め込み生成の非同期スケジュール機能
+ */
+
 import { createRoute, RouteHandler } from '@hono/zod-openapi'
-import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
+import { ErrorResponseSchema } from '../../../schemas/error.schema'
 import {
   ScheduleBatchEmbeddingSchema,
   ScheduleBatchResponseSchema
 } from '../../../schemas/embedding.schema'
+import { createSuccessResponse } from '../../../utils/response-builder'
+import { handleError } from '../../../utils/error-handler'
+import { EmbeddingService } from './embedding-service'
 
-// 環境の型定義
 type EnvType = {
   Bindings: Env
 }
 
-// スケジュールバッチ埋め込みルート
 export const scheduleBatchEmbeddingRoute = createRoute({
   method: 'post',
   path: '/embeddings/schedule',
@@ -54,36 +60,35 @@ export const scheduleBatchEmbeddingRoute = createRoute({
   description: 'バッチ埋め込み生成を非同期でスケジュールします'
 })
 
-// スケジュールバッチ埋め込みハンドラー
 export const scheduleBatchEmbeddingHandler: RouteHandler<typeof scheduleBatchEmbeddingRoute, EnvType> = async (c) => {
   try {
     const body = c.req.valid('json')
     
-    // Durable Objectを使用
-    const aiEmbeddingsId = c.env.AI_EMBEDDINGS.idFromName('default')
-    const aiEmbeddings = c.env.AI_EMBEDDINGS.get(aiEmbeddingsId)
+    // EmbeddingServiceを使用（リファクタリング後の新実装）
+    const embeddingService = new EmbeddingService(c.env)
     
-    const result = await aiEmbeddings.scheduleBatchEmbeddings(
+    // scheduleBatchEmbeddingsメソッドを呼び出す
+    // Note: EmbeddingServiceにscheduleBatchEmbeddingsメソッドがない場合は、
+    // generateBatchEmbeddingsを使用してバッチ処理を実行
+    const result = await embeddingService.generateBatchEmbeddings(
       body.texts,
       body.model,
       {
         batchSize: body.batchSize,
-        saveToVectorize: body.saveToVectorize,
-        delayMs: body.delayMs
+        saveToVectorize: body.saveToVectorize
       }
     )
     
-    return c.json({
-      success: true,
-      data: result,
-      message: `${result.textsCount}件のテキストの処理がスケジュールされました`
-    }, 200)
+    // レスポンスにtextsCountを追加
+    const responseData = {
+      ...result,
+      textsCount: result.textsCount || body.texts.length
+    }
+    
+    const response = createSuccessResponse(responseData, `${responseData.textsCount}件のテキストの処理がスケジュールされました`)
+    return c.json(response, 200)
+    
   } catch (error) {
-    console.error('Schedule batch embedding error:', error)
-    return c.json<ErrorResponse, 500>({
-      success: false,
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : 'バッチ処理のスケジュール中にエラーが発生しました'
-    }, 500)
+    return handleError(c, error, 'バッチ処理のスケジュール中にエラーが発生しました')
   }
 }

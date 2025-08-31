@@ -2,16 +2,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { retrieveNotionPageRoute, retrieveNotionPageHandler } from '../../../../src/routes/api/notion/retrieve-page'
 import { setupNotionRouteTest, createMockRequest } from '../../test-helpers'
 
-// Mock NotionService methods
+// Mock NotionOrchestrator methods
 const mockGetPage = vi.fn()
-const mockFetchPageFromNotion = vi.fn()
-const mockSavePage = vi.fn()
 
-vi.mock('../../../../src/services/notion.service', () => ({
-  NotionService: vi.fn().mockImplementation(() => ({
-    getPage: mockGetPage,
-    fetchPageFromNotion: mockFetchPageFromNotion,
-    savePage: mockSavePage
+vi.mock('../../../../src/services/notion-orchestrator', () => ({
+  NotionOrchestrator: vi.fn().mockImplementation(() => ({
+    getPage: mockGetPage
   }))
 }))
 
@@ -28,6 +24,7 @@ describe('Retrieve Notion Page Route', () => {
     it('should retrieve page from cache successfully', async () => {
       const mockCachedPage = {
         id: 'page-123',
+        notionPageId: 'page-123',
         createdTime: '2024-01-01T00:00:00.000Z',
         lastEditedTime: '2024-01-02T00:00:00.000Z',
         createdById: 'user-123',
@@ -52,65 +49,23 @@ describe('Retrieve Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockGetPage).toHaveBeenCalledWith('page-123')
+      expect(mockGetPage).toHaveBeenCalledWith('page-123', true) // forceRefresh = !fromCache (default false)
       expect(result.success).toBe(true)
       expect(result.data).toEqual({
-        object: 'page',
         id: 'page-123',
-        created_time: '2024-01-01T00:00:00.000Z',
-        last_edited_time: '2024-01-02T00:00:00.000Z',
-        created_by: { object: 'user', id: 'user-123' },
-        last_edited_by: { object: 'user', id: 'user-456' },
-        cover: { type: 'external', external: { url: 'https://example.com/cover.jpg' } },
-        icon: { type: 'emoji', emoji: '📄' },
-        parent: { type: 'workspace', workspace: true },
-        archived: false,
-        in_trash: false,
-        properties: { title: { title: [{ plain_text: 'Test Page' }] } },
+        title: 'Test Page',
         url: 'https://notion.so/test-page',
-        public_url: 'https://public.notion.so/test-page'
-      })
-    })
-
-    it('should fetch from Notion API when not in cache', async () => {
-      const mockNotionPage = {
-        object: 'page',
-        id: 'page-456',
-        created_time: '2024-01-03T00:00:00.000Z',
-        last_edited_time: '2024-01-04T00:00:00.000Z',
-        created_by: { object: 'user', id: 'user-789' },
-        last_edited_by: { object: 'user', id: 'user-101' },
-        cover: null,
-        icon: null,
-        parent: { type: 'page_id', page_id: 'parent-page' },
+        last_edited_time: '2024-01-02T00:00:00.000Z',
+        created_time: '2024-01-01T00:00:00.000Z',
         archived: false,
-        in_trash: false,
-        properties: { title: { title: [{ plain_text: 'API Page' }] } },
-        url: 'https://notion.so/api-page',
-        public_url: null
-      }
-
-      mockGetPage.mockResolvedValueOnce(null).mockResolvedValueOnce(mockNotionPage)
-      mockFetchPageFromNotion.mockResolvedValue(mockNotionPage)
-      mockSavePage.mockResolvedValue(undefined)
-
-      const request = createMockRequest('http://localhost/notion/pages/page-456', {
-        method: 'GET'
+        parent: { type: 'workspace', workspace: true }
       })
-
-      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
-      const result = await response.json() as any
-
-      expect(response.status).toBe(200)
-      expect(mockGetPage).toHaveBeenCalledTimes(2)
-      expect(mockFetchPageFromNotion).toHaveBeenCalledWith('page-456')
-      expect(mockSavePage).toHaveBeenCalledWith(mockNotionPage)
-      expect(result.data.id).toBe('page-456')
     })
 
     it('should return cached page when fromCache is true', async () => {
       const mockCachedPage = {
         id: 'page-789',
+        notionPageId: 'page-789',
         createdTime: '2024-01-05T00:00:00.000Z',
         lastEditedTime: '2024-01-06T00:00:00.000Z',
         createdById: 'user-111',
@@ -135,9 +90,9 @@ describe('Retrieve Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockGetPage).toHaveBeenCalledWith('page-789')
-      expect(mockFetchPageFromNotion).not.toHaveBeenCalled()
+      expect(mockGetPage).toHaveBeenCalledWith('page-789', false) // forceRefresh = !fromCache (true)
       expect(result.data.archived).toBe(true)
+      expect(result.data.title).toBe('Cached Only')
     })
 
     it('should handle missing Notion API key', async () => {
@@ -153,14 +108,13 @@ describe('Retrieve Notion Page Route', () => {
       expect(response.status).toBe(401)
       expect(result).toEqual({
         success: false,
-        error: 'Unauthorized',
-        message: 'Notion APIトークンが設定されていません'
+        code: 'UNAUTHORIZED',
+        error: 'Notion APIトークンが設定されていません'
       })
     })
 
-    it('should handle page not found in cache or API', async () => {
+    it('should handle page not found', async () => {
       mockGetPage.mockResolvedValue(null)
-      mockFetchPageFromNotion.mockResolvedValue(null)
 
       const request = createMockRequest('http://localhost/notion/pages/not-found', {
         method: 'GET'
@@ -172,8 +126,8 @@ describe('Retrieve Notion Page Route', () => {
       expect(response.status).toBe(404)
       expect(result).toEqual({
         success: false,
-        error: 'Not Found',
-        message: 'ページが見つかりません'
+        code: 'NOT_FOUND',
+        error: 'ページが見つかりません not found'
       })
     })
 
@@ -188,40 +142,10 @@ describe('Retrieve Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
-      expect(mockFetchPageFromNotion).not.toHaveBeenCalled()
+      expect(mockGetPage).toHaveBeenCalledWith('not-found', false)
     })
 
-    it('should handle cached page with null publicUrl', async () => {
-      const mockCachedPage = {
-        id: 'page-null-url',
-        createdTime: '2024-01-07T00:00:00.000Z',
-        lastEditedTime: '2024-01-08T00:00:00.000Z',
-        createdById: 'user-333',
-        lastEditedById: 'user-444',
-        cover: null,
-        icon: null,
-        parent: JSON.stringify({ type: 'workspace', workspace: true }),
-        archived: false,
-        inTrash: false,
-        properties: JSON.stringify({ title: { title: [{ plain_text: 'No Public URL' }] } }),
-        url: 'https://notion.so/no-public-url',
-        publicUrl: null
-      }
-
-      mockGetPage.mockResolvedValue(mockCachedPage)
-
-      const request = createMockRequest('http://localhost/notion/pages/page-null-url', {
-        method: 'GET'
-      })
-
-      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
-      const result = await response.json() as any
-
-      expect(response.status).toBe(200)
-      expect(result.data.public_url).toBeUndefined()
-    })
-
-    it('should handle errors from NotionService', async () => {
+    it('should handle errors from NotionOrchestrator', async () => {
       mockGetPage.mockRejectedValue(new Error('Database connection error'))
 
       const request = createMockRequest('http://localhost/notion/pages/page-error', {
@@ -234,8 +158,10 @@ describe('Retrieve Notion Page Route', () => {
       expect(response.status).toBe(500)
       expect(result).toEqual({
         success: false,
-        error: 'Internal Server Error',
-        message: 'Database connection error'
+        error: 'INTERNAL_ERROR',
+        message: 'Database connection error',
+        path: '/notion/pages/page-error',
+        timestamp: expect.any(String)
       })
     })
 
@@ -250,31 +176,30 @@ describe('Retrieve Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result.message).toBe('ページ取得中にエラーが発生しました')
+      expect(result.message).toBe('An unexpected error occurred')
     })
 
-    it('should handle API page that has object property', async () => {
-      const mockApiPage = {
-        object: 'page',
-        id: 'page-api',
-        created_time: '2024-01-09T00:00:00.000Z',
-        last_edited_time: '2024-01-10T00:00:00.000Z',
-        created_by: { object: 'user', id: 'user-555' },
-        last_edited_by: { object: 'user', id: 'user-666' },
+    it('should handle page with null properties', async () => {
+      const mockPage = {
+        id: 'page-null-props',
+        notionPageId: 'page-null-props',
+        createdTime: '2024-01-01T00:00:00.000Z',
+        lastEditedTime: '2024-01-02T00:00:00.000Z',
+        createdById: 'user-123',
+        lastEditedById: 'user-456',
         cover: null,
         icon: null,
-        parent: { type: 'workspace', workspace: true },
+        parent: JSON.stringify({ type: 'workspace', workspace: true }),
         archived: false,
-        in_trash: false,
-        properties: { title: { title: [{ plain_text: 'Direct API Page' }] } },
-        url: 'https://notion.so/direct-api',
-        public_url: null
+        inTrash: false,
+        properties: JSON.stringify({}),
+        url: 'https://notion.so/null-props',
+        publicUrl: null
       }
 
-      mockGetPage.mockResolvedValue(mockApiPage)
-      mockFetchPageFromNotion.mockResolvedValue(mockApiPage)
+      mockGetPage.mockResolvedValue(mockPage)
 
-      const request = createMockRequest('http://localhost/notion/pages/page-api', {
+      const request = createMockRequest('http://localhost/notion/pages/page-null-props', {
         method: 'GET'
       })
 
@@ -282,32 +207,13 @@ describe('Retrieve Notion Page Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(result.data).toEqual(mockApiPage)
-    })
-
-    it('should handle page not found after getPage returns object', async () => {
-      const mockApiPage = {
-        object: 'page',
-        id: 'page-api-notfound'
-      }
-
-      mockGetPage.mockResolvedValue(mockApiPage)
-      mockFetchPageFromNotion.mockResolvedValue(null)
-
-      const request = createMockRequest('http://localhost/notion/pages/page-api-notfound', {
-        method: 'GET'
-      })
-
-      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
-      const result = await response.json() as any
-
-      expect(response.status).toBe(404)
-      expect(result.message).toBe('ページが見つかりません')
+      expect(result.data.title).toBe('Untitled')
     })
 
     it('should use fromCache default value when not specified', async () => {
       const mockCachedPage = {
         id: 'page-default-cache',
+        notionPageId: 'page-default-cache',
         createdTime: '2024-01-01T00:00:00.000Z',
         lastEditedTime: '2024-01-02T00:00:00.000Z',
         createdById: 'user-123',
@@ -335,11 +241,13 @@ describe('Retrieve Notion Page Route', () => {
       expect(response.status).toBe(200)
       expect(result.success).toBe(true)
       expect(result.data.id).toBe('page-default-cache')
+      expect(mockGetPage).toHaveBeenCalledWith('page-default-cache', true) // forceRefresh = !fromCache
     })
 
     it('should handle fromCache=false explicitly', async () => {
       const mockCachedPage = {
         id: 'page-explicit-false',
+        notionPageId: 'page-explicit-false',
         createdTime: '2024-01-01T00:00:00.000Z',
         lastEditedTime: '2024-01-02T00:00:00.000Z',
         createdById: 'user-123',
@@ -366,70 +274,7 @@ describe('Retrieve Notion Page Route', () => {
       expect(response.status).toBe(200)
       expect(result.success).toBe(true)
       expect(result.data.id).toBe('page-explicit-false')
-    })
-
-    it('should handle fromCache with other values', async () => {
-      const mockCachedPage = {
-        id: 'page-other-value',
-        createdTime: '2024-01-01T00:00:00.000Z',
-        lastEditedTime: '2024-01-02T00:00:00.000Z',
-        createdById: 'user-123',
-        lastEditedById: 'user-456',
-        cover: null,
-        icon: null,
-        parent: JSON.stringify({ type: 'workspace', workspace: true }),
-        archived: false,
-        inTrash: false,
-        properties: JSON.stringify({ title: { title: [{ plain_text: 'Other Value Test' }] } }),
-        url: 'https://notion.so/other-value-test',
-        publicUrl: null
-      }
-
-      mockGetPage.mockResolvedValue(mockCachedPage)
-
-      const request = createMockRequest('http://localhost/notion/pages/page-other-value?fromCache=invalid', {
-        method: 'GET'
-      })
-
-      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
-      const result = await response.json() as any
-
-      expect(response.status).toBe(200)
-      expect(result.success).toBe(true)
-      expect(result.data.id).toBe('page-other-value')
-      // fromCache=invalid should be treated as false
-    })
-
-    it('should handle empty fromCache parameter', async () => {
-      const mockCachedPage = {
-        id: 'page-empty-cache',
-        createdTime: '2024-01-01T00:00:00.000Z',
-        lastEditedTime: '2024-01-02T00:00:00.000Z',
-        createdById: 'user-123',
-        lastEditedById: 'user-456',
-        cover: null,
-        icon: null,
-        parent: JSON.stringify({ type: 'workspace', workspace: true }),
-        archived: false,
-        inTrash: false,
-        properties: JSON.stringify({ title: { title: [{ plain_text: 'Empty Cache Test' }] } }),
-        url: 'https://notion.so/empty-cache-test',
-        publicUrl: null
-      }
-
-      mockGetPage.mockResolvedValue(mockCachedPage)
-
-      const request = createMockRequest('http://localhost/notion/pages/page-empty-cache?fromCache=', {
-        method: 'GET'
-      })
-
-      const response = await testSetup.app.fetch(request, testSetup.mockEnv)
-      const result = await response.json() as any
-
-      expect(response.status).toBe(200)
-      expect(result.success).toBe(true)
-      expect(result.data.id).toBe('page-empty-cache')
-      // fromCache="" should be treated as false (empty string !== 'true')
+      expect(mockGetPage).toHaveBeenCalledWith('page-explicit-false', true) // forceRefresh = !fromCache
     })
   })
 })

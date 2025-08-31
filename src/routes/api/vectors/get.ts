@@ -1,18 +1,20 @@
+/**
+ * ベクトル取得ルート (リファクタリング版)
+ * IDによるベクトル単体取得
+ */
+
 import { createRoute, RouteHandler } from '@hono/zod-openapi'
 import { z } from '@hono/zod-openapi'
-import {
-  VectorResponseSchema,
-  type VectorResponse
-} from '../../../schemas/vector.schema'
-import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
-import { VectorizeService } from '../../../services'
+import { VectorResponseSchema } from '../../../schemas/vector.schema'
+import { ErrorResponseSchema } from '../../../schemas/error.schema'
+import { createSuccessResponse } from '../../../utils/response-builder'
+import { notFoundResponse } from '../../../utils/response-builder-compat'
+import { handleError } from '../../../utils/error-handler'
 
-// 環境の型定義
 type EnvType = {
   Bindings: Env
 }
 
-// ベクトル取得ルート定義
 export const getVectorRoute = createRoute({
   method: 'get',
   path: '/vectors/{id}',
@@ -52,33 +54,25 @@ export const getVectorRoute = createRoute({
   description: 'IDを指定してベクトルを取得します'
 })
 
-// ベクトル取得ハンドラー
 export const getVectorHandler: RouteHandler<typeof getVectorRoute, EnvType> = async (c) => {
   try {
     const { id } = c.req.valid('param')
     
-    const vectorizeService = new VectorizeService(c.env)
-    const vectors = await vectorizeService.getByIds([id])
+    const vectors = await c.env.VECTORIZE_INDEX.getByIds([id])
+    const vector = vectors && vectors.length > 0 ? vectors[0] : null
 
-    if (!vectors || vectors.length === 0) {
-      return c.json<ErrorResponse, 404>({
-        success: false,
-        error: 'Not Found',
-        message: `ベクトル ${id} が見つかりません`
-      }, 404)
+    if (!vector) {
+      const response = notFoundResponse(`ベクトル ${id} が見つかりません`)
+      return new Response(response.body, {
+        status: response.status,
+        headers: response.headers
+      })
     }
 
-    return c.json<VectorResponse, 200>({
-      success: true,
-      data: vectors[0],
-      message: 'ベクトルが見つかりました'
-    }, 200)
+    const response = createSuccessResponse(vector, 'ベクトルが見つかりました')
+    return c.json(response, 200)
+    
   } catch (error) {
-    console.error('Get vector error:', error)
-    return c.json<ErrorResponse, 500>({
-      success: false,
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : 'ベクトル取得中にエラーが発生しました'
-    }, 500)
+    return handleError(c, error, 'ベクトル取得中にエラーが発生しました')
   }
 }

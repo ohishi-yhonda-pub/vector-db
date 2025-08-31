@@ -4,7 +4,8 @@ import { scheduleBatchEmbeddingRoute, scheduleBatchEmbeddingHandler } from '../.
 
 // Mock AI Embeddings Durable Object
 const mockAIEmbeddings = {
-  scheduleBatchEmbeddings: vi.fn()
+  scheduleBatchEmbeddings: vi.fn(),
+  generateBatchEmbeddings: vi.fn()
 }
 
 // Mock Durable Object namespace
@@ -51,13 +52,13 @@ describe('Schedule Batch Embeddings Route', () => {
   describe('POST /embeddings/schedule', () => {
     it('should schedule batch embeddings successfully', async () => {
       const mockResult = {
-        jobId: 'job-schedule-123',
-        workflowId: 'workflow-schedule-456',
-        status: 'scheduled',
-        textsCount: 5
+        batchId: 'batch-schedule-123',
+        workflowIds: ['workflow-1', 'workflow-2', 'workflow-3', 'workflow-4', 'workflow-5'],
+        textsCount: 5,
+        status: 'queued'
       }
 
-      mockAIEmbeddings.scheduleBatchEmbeddings.mockResolvedValue(mockResult)
+      mockAIEmbeddings.generateBatchEmbeddings.mockResolvedValue(mockResult)
 
       const request = new Request('http://localhost/embeddings/schedule', {
         method: 'POST',
@@ -75,13 +76,12 @@ describe('Schedule Batch Embeddings Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockAIEmbeddings.scheduleBatchEmbeddings).toHaveBeenCalledWith(
+      expect(mockAIEmbeddings.generateBatchEmbeddings).toHaveBeenCalledWith(
         ['Text 1', 'Text 2', 'Text 3', 'Text 4', 'Text 5'],
         '@cf/baai/bge-base-en-v1.5',
         {
           batchSize: 2,
-          saveToVectorize: true,
-          delayMs: 5000
+          saveToVectorize: true
         }
       )
       expect(result).toEqual({
@@ -93,12 +93,13 @@ describe('Schedule Batch Embeddings Route', () => {
 
     it('should work with minimal parameters', async () => {
       const mockResult = {
-        jobId: 'job-minimal',
-        status: 'scheduled',
-        textsCount: 1
+        batchId: 'batch-minimal',
+        workflowIds: ['workflow-1'],
+        textsCount: 1,
+        status: 'queued'
       }
 
-      mockAIEmbeddings.scheduleBatchEmbeddings.mockResolvedValue(mockResult)
+      mockAIEmbeddings.generateBatchEmbeddings.mockResolvedValue(mockResult)
 
       const request = new Request('http://localhost/embeddings/schedule', {
         method: 'POST',
@@ -112,13 +113,14 @@ describe('Schedule Batch Embeddings Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(mockAIEmbeddings.scheduleBatchEmbeddings).toHaveBeenCalledWith(
+      expect(mockAIEmbeddings.generateBatchEmbeddings).toHaveBeenCalledWith(
         ['Single text'],
-        undefined,
+        '@cf/baai/bge-base-en-v1.5',  // EmbeddingServiceがデフォルト値を設定
         {
-          batchSize: undefined,
-          saveToVectorize: undefined,
-          delayMs: undefined
+          batchSize: 10,  // デフォルト値
+          saveToVectorize: false,  // デフォルト値
+          namespace: undefined,
+          metadata: undefined
         }
       )
       expect(result.success).toBe(true)
@@ -160,7 +162,7 @@ describe('Schedule Batch Embeddings Route', () => {
     })
 
     it('should handle Durable Object errors', async () => {
-      mockAIEmbeddings.scheduleBatchEmbeddings.mockRejectedValue(new Error('Scheduling failed'))
+      mockAIEmbeddings.generateBatchEmbeddings.mockRejectedValue(new Error('Scheduling failed'))
 
       const request = new Request('http://localhost/embeddings/schedule', {
         method: 'POST',
@@ -174,15 +176,14 @@ describe('Schedule Batch Embeddings Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result).toEqual({
-        success: false,
-        error: 'Internal Server Error',
-        message: 'Scheduling failed'
-      })
+      // EmbeddingServiceがAppErrorをスローするため、エラーレスポンスの形式が異なる
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('EMBEDDING_GENERATION_ERROR')
+      expect(result.message).toContain('Failed to generate batch embeddings')
     })
 
     it('should handle non-Error exceptions', async () => {
-      mockAIEmbeddings.scheduleBatchEmbeddings.mockRejectedValue({ code: 'SCHEDULE_ERROR' })
+      mockAIEmbeddings.generateBatchEmbeddings.mockRejectedValue({ code: 'SCHEDULE_ERROR' })
 
       const request = new Request('http://localhost/embeddings/schedule', {
         method: 'POST',
@@ -196,7 +197,8 @@ describe('Schedule Batch Embeddings Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result.message).toBe('バッチ処理のスケジュール中にエラーが発生しました')
+      // EmbeddingServiceがエラーをラップするため、メッセージが異なる
+      expect(result.message).toContain('Failed to generate batch embeddings')
     })
   })
 })
