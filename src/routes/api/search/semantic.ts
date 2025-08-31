@@ -1,13 +1,14 @@
+/**
+ * セマンティック検索ルート（リファクタリング版）
+ */
+
 import { createRoute, RouteHandler } from '@hono/zod-openapi'
-import { z } from '@hono/zod-openapi'
-import {
-  SearchQuerySchema,
-  SearchResponseSchema,
-  type SearchResponse
-} from '../../../schemas/search.schema'
-import { type VectorizeMatch } from '../../../schemas/cloudflare.schema'
+import { SearchResponseSchema, type SearchResponse } from '../../../schemas/search.schema'
 import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
-import { VectorizeService } from '../../../services'
+import { SemanticSearchQuerySchema, SemanticSearchBodySchema, normalizeSearchParams } from './search-validator'
+import { SearchService } from './search-service'
+import { AppError } from '../../../utils/error-handler'
+import { createLogger } from '../../../middleware/logging'
 
 // 環境の型定義
 type EnvType = {
@@ -19,20 +20,7 @@ export const semanticSearchRoute = createRoute({
   method: 'get',
   path: '/search/semantic',
   request: {
-    query: z.object({
-      query: z.string().min(1).openapi({
-        example: '検索クエリテキスト',
-        description: '検索するテキストクエリ'
-      }),
-      topK: z.string().optional().transform(v => v ? Number(v) : 10).pipe(z.number().int().min(1).max(100)).openapi({
-        example: '10',
-        description: '返す結果の最大数'
-      }),
-      namespace: z.string().optional().openapi({
-        example: 'default',
-        description: '検索する名前空間'
-      })
-    })
+    query: SemanticSearchQuerySchema
   },
   responses: {
     200: {
@@ -67,39 +55,38 @@ export const semanticSearchRoute = createRoute({
 
 // セマンティック検索ハンドラー
 export const semanticSearchHandler: RouteHandler<typeof semanticSearchRoute, EnvType> = async (c) => {
+  const logger = createLogger('SemanticSearch', c.env)
+  const startTime = Date.now()
+
   try {
-    const startTime = Date.now()
-    const query = c.req.valid('query')
+    // クエリパラメータの取得と正規化
+    const query = normalizeSearchParams(c.req.valid('query'))
+    
+    logger.info('Starting semantic search', {
+      query: query.query.substring(0, 50),
+      topK: query.topK,
+      namespace: query.namespace
+    })
 
-    const vectorizeService = new VectorizeService(c.env)
+    // 検索サービスの初期化
+    const searchService = new SearchService(c.env)
 
-    // Workers AIを直接使用してクエリテキストをベクトル化（同期的）
-    const aiResult = await c.env.AI.run(c.env.DEFAULT_EMBEDDING_MODEL as keyof AiModels, { text: query.query })
-
-    if (!('data' in aiResult) || !aiResult.data || aiResult.data.length === 0) {
-      throw new Error('Failed to generate embedding for query')
-    }
-    const embedding = aiResult.data[0]
-
-    // Vectorizeで検索
-    const searchResults = await vectorizeService.query(
-      embedding,
-      {
-        topK: query.topK,
-        namespace: query.namespace,
-        returnMetadata: true
-      }
-    )
-
-    // 結果を整形
-    const matches = searchResults.matches.map((match: VectorizeMatch) => ({
-      id: match.id,
-      score: match.score,
-      metadata: match.metadata
-    }))
+    // セマンティック検索の実行（メタデータを含める）
+    const matches = await searchService.searchByText(query.query, {
+      topK: query.topK,
+      namespace: query.namespace,
+      includeMetadata: true,
+      includeValues: false
+    })
 
     const processingTime = Date.now() - startTime
 
+    logger.info('Semantic search completed', {
+      resultCount: matches.length,
+      processingTime
+    })
+
+    // 成功レスポンスの返却
     return c.json<SearchResponse, 200>({
       success: true,
       data: {
@@ -108,10 +95,148 @@ export const semanticSearchHandler: RouteHandler<typeof semanticSearchRoute, Env
         namespace: query.namespace,
         processingTime
       },
-      message: `${matches.length}件の結果が見つかりました`
+      message: matches.length > 0
+        ? `${matches.length}件の結果が見つかりました`
+        : '0件の結果が見つかりました'
     }, 200)
+
   } catch (error) {
-    console.error('Semantic search error:', error)
+    const processingTime = Date.now() - startTime
+
+    if (error instanceof AppError) {
+      logger.error('Semantic search failed with AppError', error, {
+        code: error.code,
+        statusCode: error.statusCode,
+        processingTime
+      })
+
+      return c.json<ErrorResponse, 400 | 500>({
+        success: false,
+        error: error.code,
+        message: error.message
+      }, error.statusCode as 400 | 500)
+    }
+
+    logger.error('Unexpected semantic search error', error, { processingTime })
+
+    return c.json<ErrorResponse, 500>({
+      success: false,
+      error: 'Internal Server Error',
+      message: error instanceof Error ? error.message : '検索中にエラーが発生しました'
+    }, 500)
+  }
+}
+
+// POST版セマンティック検索ルート定義（より詳細な設定が可能）
+export const semanticSearchPostRoute = createRoute({
+  method: 'post',
+  path: '/search/semantic',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: SemanticSearchBodySchema
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: SearchResponseSchema
+        }
+      },
+      description: '検索結果'
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema
+        }
+      },
+      description: '不正なリクエスト'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema
+        }
+      },
+      description: 'サーバーエラー'
+    }
+  },
+  tags: ['Search'],
+  summary: 'セマンティック検索（POST）',
+  description: 'リクエストボディを使用した詳細セマンティック検索'
+})
+
+// POST版も同じハンドラーを使用（バリデーション方法が異なるだけ）
+export const semanticSearchPostHandler: RouteHandler<typeof semanticSearchPostRoute, EnvType> = async (c) => {
+  const logger = createLogger('SemanticSearchPost', c.env)
+  const startTime = Date.now()
+
+  try {
+    // リクエストボディの取得と正規化
+    const body = normalizeSearchParams(c.req.valid('json'))
+    
+    logger.info('Starting semantic search (POST)', {
+      query: body.query.substring(0, 50),
+      topK: body.topK,
+      namespace: body.namespace
+    })
+
+    // 検索サービスの初期化
+    const searchService = new SearchService(c.env)
+
+    // セマンティック検索の実行
+    const matches = await searchService.searchByText(body.query, {
+      topK: body.topK,
+      namespace: body.namespace,
+      includeMetadata: true,
+      includeValues: false
+    })
+
+    const processingTime = Date.now() - startTime
+
+    logger.info('Semantic search (POST) completed', {
+      resultCount: matches.length,
+      processingTime
+    })
+
+    // 成功レスポンスの返却
+    return c.json<SearchResponse, 200>({
+      success: true,
+      data: {
+        matches,
+        query: body.query,
+        namespace: body.namespace,
+        processingTime
+      },
+      message: matches.length > 0
+        ? `${matches.length}件の結果が見つかりました`
+        : '0件の結果が見つかりました'
+    }, 200)
+
+  } catch (error) {
+    const processingTime = Date.now() - startTime
+
+    if (error instanceof AppError) {
+      logger.error('Semantic search (POST) failed with AppError', error, {
+        code: error.code,
+        statusCode: error.statusCode,
+        processingTime
+      })
+
+      return c.json<ErrorResponse, 400 | 500>({
+        success: false,
+        error: error.code,
+        message: error.message
+      }, error.statusCode as 400 | 500)
+    }
+
+    logger.error('Unexpected semantic search (POST) error', error, { processingTime })
+
     return c.json<ErrorResponse, 500>({
       success: false,
       error: 'Internal Server Error',

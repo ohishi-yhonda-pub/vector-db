@@ -1,9 +1,14 @@
+/**
+ * 類似ベクトル検索ルート（リファクタリング版）
+ */
+
 import { createRoute, RouteHandler } from '@hono/zod-openapi'
-import { z } from '@hono/zod-openapi'
 import { SearchResponseSchema, type SearchResponse } from '../../../schemas/search.schema'
-import { type VectorizeMatch } from '../../../schemas/cloudflare.schema'
 import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
-import { VectorizeService } from '../../../services'
+import { SimilarSearchParamsSchema, normalizeSearchParams } from './search-validator'
+import { SearchService } from './search-service'
+import { AppError, ErrorCodes, createErrorResponse, getStatusCode } from '../../../utils/error-handler'
+import { createLogger } from '../../../middleware/logging'
 
 // 環境の型定義
 type EnvType = {
@@ -18,17 +23,7 @@ export const similarSearchRoute = createRoute({
     body: {
       content: {
         'application/json': {
-          schema: z.object({
-            vectorId: z.string().min(1).openapi({
-              example: 'vec_123456',
-              description: '類似検索の基準となるベクトルID'
-            }),
-            topK: z.number().int().min(1).max(100).default(10),
-            namespace: z.string().optional(),
-            excludeSelf: z.boolean().default(true).openapi({
-              description: '結果から自分自身を除外するか'
-            })
-          })
+          schema: SimilarSearchParamsSchema
         }
       }
     }
@@ -66,54 +61,61 @@ export const similarSearchRoute = createRoute({
 
 // 類似検索ハンドラー
 export const similarSearchHandler: RouteHandler<typeof similarSearchRoute, EnvType> = async (c) => {
+  const logger = createLogger('SimilarSearch', c.env)
+  const startTime = Date.now()
+  
   try {
-    const startTime = Date.now()
-    const body = c.req.valid('json')
+    // リクエストパラメータの取得と正規化
+    const body = normalizeSearchParams(c.req.valid('json'))
     
-    const vectorizeService = new VectorizeService(c.env)
+    logger.info('Starting similar search', {
+      vectorId: body.vectorId,
+      topK: body.topK,
+      namespace: body.namespace,
+      excludeSelf: body.excludeSelf
+    })
     
-    // 類似検索を実行
-    const searchResults = await vectorizeService.findSimilar(
-      body.vectorId,
-      {
-        topK: body.topK,
-        namespace: body.namespace,
-        excludeSelf: body.excludeSelf,
-        returnMetadata: true
-      }
-    )
+    // 検索サービスの初期化
+    const searchService = new SearchService(c.env)
+    
+    // 類似検索の実行
+    const matches = await searchService.searchSimilar(body.vectorId, {
+      topK: body.topK,
+      namespace: body.namespace,
+      excludeSelf: body.excludeSelf
+    })
     
     const processingTime = Date.now() - startTime
     
+    logger.info('Similar search completed', {
+      vectorId: body.vectorId,
+      resultCount: matches.length,
+      processingTime
+    })
+    
+    // 成功レスポンスの返却
     return c.json<SearchResponse, 200>({
       success: true,
       data: {
-        matches: searchResults.matches.map((match: VectorizeMatch) => ({
-          id: match.id,
-          score: match.score,
-          metadata: match.metadata
-        })),
+        matches,
         query: `Similar to ${body.vectorId}`,
         namespace: body.namespace,
         processingTime
       },
-      message: `${searchResults.matches.length}件の類似ベクトルが見つかりました`
+      message: matches.length > 0
+        ? `${matches.length}件の類似ベクトルが見つかりました`
+        : '0件の類似ベクトルが見つかりました'
     }, 200)
+    
   } catch (error) {
-    console.error('Similar search error:', error)
+    const processingTime = Date.now() - startTime
     
-    if (error instanceof Error && error.message.includes('not found')) {
-      return c.json<ErrorResponse, 404>({
-        success: false,
-        error: 'Not Found',
-        message: error.message
-      }, 404)
-    }
+    logger.error('Similar search failed', error, { processingTime })
     
-    return c.json<ErrorResponse, 500>({
-      success: false,
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : '類似検索中にエラーが発生しました'
-    }, 500)
+    // エラーレスポンスの生成
+    const errorResponse = createErrorResponse(error, c)
+    const statusCode = getStatusCode(error)
+    
+    return c.json<ErrorResponse, any>(errorResponse, statusCode)
   }
 }

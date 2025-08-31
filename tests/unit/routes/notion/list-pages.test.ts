@@ -309,7 +309,7 @@ describe('List Notion Pages Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(200)
-      expect(result.data.pages[0].title).toBe('')
+      expect(result.data.pages[0].title).toBe('Untitled')
     })
 
     it('should handle parent without type', async () => {

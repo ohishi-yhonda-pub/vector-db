@@ -1,7 +1,8 @@
 import { createRoute, RouteHandler } from '@hono/zod-openapi'
 import { z } from '@hono/zod-openapi'
 import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
-import { VectorJobSchema, type VectorJob } from '../../../schemas/vector.schema'
+import { VectorJobSchema } from '../../../schemas/vector.schema'
+import { VectorJobService } from './job-service'
 
 // 環境の型定義
 type EnvType = {
@@ -62,27 +63,16 @@ export const getJobStatusHandler: RouteHandler<typeof getJobStatusRoute, EnvType
   try {
     const { jobId } = c.req.valid('param')
     
-    // VectorManager Durable Objectを使用
-    const vectorManagerId = c.env.VECTOR_CACHE.idFromName('default')
-    const vectorManager = c.env.VECTOR_CACHE.get(vectorManagerId)
+    const jobService = new VectorJobService(c.env)
+    const result = await jobService.getJobStatus(jobId)
     
-    // ジョブステータスを取得
-    const job = await vectorManager.getJobStatus(jobId)
-    
-    if (!job) {
-      return c.json<ErrorResponse, 404>({
-        success: false,
-        error: 'Not Found',
-        message: `ジョブ ${jobId} が見つかりません`
-      }, 404)
+    if (!result.success) {
+      return c.json<ErrorResponse, 404>(result.error!, 404)
     }
-    
-    // jobデータをVectorJobSchemaで検証
-    const validatedJob = VectorJobSchema.parse(job)
     
     return c.json({
       success: true as const,
-      data: validatedJob
+      data: result.data!
     }, 200)
   } catch (error) {
     console.error('Get job status error:', error)
@@ -99,14 +89,31 @@ const AllJobsResponseSchema = z.object({
   success: z.literal(true),
   data: z.object({
     jobs: z.array(VectorJobSchema),
-    total: z.number()
+    total: z.number(),
+    summary: z.object({
+      total: z.number(),
+      pending: z.number(),
+      processing: z.number(),
+      completed: z.number(),
+      failed: z.number()
+    }).optional()
   })
+})
+
+// クエリパラメータスキーマ
+const JobsQuerySchema = z.object({
+  status: z.enum(['pending', 'processing', 'completed', 'failed']).optional(),
+  sort: z.enum(['asc', 'desc']).default('desc'),
+  includeSummary: z.string().default('false').transform(val => val === 'true')
 })
 
 // 全ジョブ一覧取得ルート定義
 export const getAllJobsRoute = createRoute({
   method: 'get',
   path: '/vectors/jobs',
+  request: {
+    query: JobsQuerySchema
+  },
   responses: {
     200: {
       content: {
@@ -133,22 +140,31 @@ export const getAllJobsRoute = createRoute({
 // 全ジョブ一覧取得ハンドラー
 export const getAllJobsHandler: RouteHandler<typeof getAllJobsRoute, EnvType> = async (c) => {
   try {
-    // VectorManager Durable Objectを使用
-    const vectorManagerId = c.env.VECTOR_CACHE.idFromName('default')
-    const vectorManager = c.env.VECTOR_CACHE.get(vectorManagerId)
+    const { status, sort, includeSummary } = c.req.valid('query')
     
-    // すべてのジョブを取得
-    const jobs = await vectorManager.getAllJobs()
+    const jobService = new VectorJobService(c.env)
+    const { jobs, total } = await jobService.getAllJobs()
     
-    // jobsデータをVectorJobSchemaの配列で検証
-    const validatedJobs = z.array(VectorJobSchema).parse(jobs)
+    // フィルタリング
+    let filteredJobs = jobService.filterJobsByStatus(jobs, status)
+    
+    // ソート
+    filteredJobs = jobService.sortJobsByDate(filteredJobs, sort)
+    
+    // レスポンスの構築
+    const responseData: any = {
+      jobs: filteredJobs,
+      total: filteredJobs.length
+    }
+    
+    // サマリを含む場合
+    if (includeSummary) {
+      responseData.summary = jobService.getJobsSummary(jobs)
+    }
     
     return c.json({
       success: true as const,
-      data: {
-        jobs: validatedJobs,
-        total: validatedJobs.length
-      }
+      data: responseData
     }, 200)
   } catch (error) {
     console.error('Get all jobs error:', error)

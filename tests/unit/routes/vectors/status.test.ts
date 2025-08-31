@@ -133,7 +133,7 @@ describe('Vector Job Status Routes', () => {
       expect(json).toEqual({
         success: true,
         data: {
-          jobs: mockJobs,
+          jobs: [mockJobs[1], mockJobs[0]], // Sorted by createdAt descending
           total: 2
         }
       })

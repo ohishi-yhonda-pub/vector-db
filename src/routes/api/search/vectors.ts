@@ -1,13 +1,14 @@
+/**
+ * ベクトル検索ルート（リファクタリング版）
+ */
+
 import { createRoute, RouteHandler } from '@hono/zod-openapi'
-import { 
-  SearchQuerySchema,
-  SearchResponseSchema,
-  type SearchResponse,
-  type SearchMatch
-} from '../../../schemas/search.schema'
-import { type VectorizeMatch } from '../../../schemas/cloudflare.schema'
+import { SearchResponseSchema, type SearchResponse } from '../../../schemas/search.schema'
 import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
-import { VectorizeService } from '../../../services'
+import { TextSearchParamsSchema, normalizeSearchParams } from './search-validator'
+import { SearchService } from './search-service'
+import { AppError, createErrorResponse, getStatusCode } from '../../../utils/error-handler'
+import { createLogger } from '../../../middleware/logging'
 
 // 環境の型定義
 type EnvType = {
@@ -22,7 +23,7 @@ export const searchVectorsRoute = createRoute({
     body: {
       content: {
         'application/json': {
-          schema: SearchQuerySchema
+          schema: TextSearchParamsSchema
         }
       }
     }
@@ -60,52 +61,39 @@ export const searchVectorsRoute = createRoute({
 
 // ベクトル検索ハンドラー
 export const searchVectorsHandler: RouteHandler<typeof searchVectorsRoute, EnvType> = async (c) => {
+  const logger = createLogger('SearchVectors', c.env)
+  const startTime = Date.now()
+  
   try {
-    const startTime = Date.now()
-    const body = c.req.valid('json')
+    // リクエストパラメータの取得と正規化
+    const body = normalizeSearchParams(c.req.valid('json'))
     
-    const vectorizeService = new VectorizeService(c.env)
+    logger.info('Starting vector search', {
+      query: body.query.substring(0, 50),
+      topK: body.topK,
+      namespace: body.namespace
+    })
     
-    // Workers AIを直接使用してクエリテキストをベクトル化（同期的）
-    const aiResult = await c.env.AI.run(c.env.DEFAULT_EMBEDDING_MODEL as keyof AiModels, { text: body.query })
+    // 検索サービスの初期化
+    const searchService = new SearchService(c.env)
     
-    if (!('data' in aiResult) || !aiResult.data || aiResult.data.length === 0) {
-      throw new Error('Failed to generate embedding for query')
-    }
-    const embedding = aiResult.data[0]
-    
-    // Vectorizeで検索
-    const searchResults = await vectorizeService.query(
-      embedding,
-      {
-        topK: body.topK,
-        namespace: body.namespace,
-        filter: body.filter,
-        returnMetadata: body.includeMetadata
-      }
-    )
-    
-    // 結果を整形
-    const matches = searchResults.matches.map((match: VectorizeMatch) => {
-      const result: SearchMatch = {
-        id: match.id,
-        score: match.score
-      }
-      
-      if (body.includeMetadata && match.metadata) {
-        result.metadata = match.metadata
-      }
-      
-      if (body.includeValues) {
-        // 値を含める場合は別途取得が必要
-        // ここでは簡略化のため省略
-      }
-      
-      return result
+    // テキスト検索の実行
+    const matches = await searchService.searchByText(body.query, {
+      topK: body.topK,
+      namespace: body.namespace,
+      filter: body.filter,
+      includeMetadata: body.includeMetadata,
+      includeValues: body.includeValues
     })
     
     const processingTime = Date.now() - startTime
     
+    logger.info('Search completed', {
+      resultCount: matches.length,
+      processingTime
+    })
+    
+    // 成功レスポンスの返却
     return c.json<SearchResponse, 200>({
       success: true,
       data: {
@@ -114,14 +102,20 @@ export const searchVectorsHandler: RouteHandler<typeof searchVectorsRoute, EnvTy
         namespace: body.namespace,
         processingTime
       },
-      message: `${matches.length}件の結果が見つかりました`
+      message: matches.length > 0 
+        ? `${matches.length}件の結果が見つかりました` 
+        : '0件の結果が見つかりました'
     }, 200)
+    
   } catch (error) {
-    console.error('Search error:', error)
-    return c.json<ErrorResponse, 500>({
-      success: false,
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : '検索中にエラーが発生しました'
-    }, 500)
+    const processingTime = Date.now() - startTime
+    
+    logger.error('Search failed', error, { processingTime })
+    
+    // エラーレスポンスの生成
+    const errorResponse = createErrorResponse(error, c)
+    const statusCode = getStatusCode(error)
+    
+    return c.json<ErrorResponse, any>(errorResponse, statusCode)
   }
 }

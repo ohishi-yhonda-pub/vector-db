@@ -1,14 +1,21 @@
+/**
+ * Notionページ同期ルート (リファクタリング版)
+ * ページとコンテンツの同期・ベクトル化
+ */
+
 import { createRoute, RouteHandler } from '@hono/zod-openapi'
 import { z } from '@hono/zod-openapi'
 import { SyncNotionPageRequestSchema, NotionSyncResponseSchema } from '../../../schemas/notion.schema'
-import { ErrorResponseSchema, type ErrorResponse } from '../../../schemas/error.schema'
+import { ErrorResponseSchema } from '../../../schemas/error.schema'
+import { createSuccessResponse } from '../../../utils/response-builder'
+import { unauthorizedResponse, acceptedResponse } from '../../../utils/response-builder-compat'
+import { handleError } from '../../../utils/error-handler'
+import { NotionOrchestrator } from '../../../services/notion-orchestrator'
 
-// 環境の型定義
 type EnvType = {
   Bindings: Env
 }
 
-// ページ同期ルート定義
 export const syncNotionPageRoute = createRoute({
   method: 'post',
   path: '/notion/pages/{pageId}/sync',
@@ -55,47 +62,34 @@ export const syncNotionPageRoute = createRoute({
   description: 'Notionページとそのコンテンツを同期し、ベクトル化します'
 })
 
-// ページ同期ハンドラー
 export const syncNotionPageHandler: RouteHandler<typeof syncNotionPageRoute, EnvType> = async (c) => {
   try {
     const { pageId } = c.req.valid('param')
     const body = c.req.valid('json')
     
-    // Notion APIトークンを取得
     const notionToken = c.env.NOTION_API_KEY
     if (!notionToken) {
-      return c.json<ErrorResponse, 401>({
-        success: false,
-        error: 'Unauthorized',
-        message: 'Notion APIトークンが設定されていません'
-      }, 401)
+      const response = unauthorizedResponse('Notion APIトークンが設定されていません')
+      return new Response(response.body, {
+        status: response.status,
+        headers: response.headers
+      })
     }
 
-    // NotionManagerを使用して同期ジョブを作成
-    const notionManagerId = c.env.NOTION_MANAGER.idFromName('global')
-    const notionManager = c.env.NOTION_MANAGER.get(notionManagerId)
-    
-    const result = await notionManager.createSyncJob(pageId, {
-      includeBlocks: body.includeBlocks,
-      includeProperties: body.includeProperties,
-      namespace: body.namespace
-    })
+    const notionOrchestrator = new NotionOrchestrator(c.env, notionToken)
+    const result = await notionOrchestrator.syncPage(pageId)
 
-    return c.json({
-      success: true,
-      data: {
-        jobId: result.jobId,
-        pageId,
-        status: result.status,
-        message: 'ページの同期処理を開始しました'
-      }
-    }, 202)
+    const responseData = {
+      ...result,
+      message: 'ページの同期処理を開始しました'
+    }
+    const response = acceptedResponse(responseData)
+    return new Response(response.body, {
+      status: response.status,
+      headers: response.headers
+    })
+    
   } catch (error) {
-    console.error('Sync page error:', error)
-    return c.json<ErrorResponse, 500>({
-      success: false,
-      error: 'Internal Server Error',
-      message: error instanceof Error ? error.message : '同期処理の開始中にエラーが発生しました'
-    }, 500)
+    return handleError(c, error, '同期処理の開始中にエラーが発生しました')
   }
 }

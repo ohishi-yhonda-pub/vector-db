@@ -192,11 +192,11 @@ describe('Search Vectors Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result).toEqual({
-        success: false,
-        error: 'Internal Server Error',
-        message: 'Failed to generate embedding for query'
-      })
+      expect(result.success).toBe(false)
+      expect(result.error).toBe('EMBEDDING_GENERATION_ERROR')
+      expect(result.message).toBe('Failed to generate embedding for query')
+      expect(result.timestamp).toBeDefined()
+      expect(result.path).toBe('/search')
     })
 
     it('should handle AI run without data property', async () => {
@@ -237,11 +237,10 @@ describe('Search Vectors Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result).toEqual({
-        success: false,
-        error: 'Internal Server Error',
-        message: 'Vectorize search failed'
-      })
+      expect(result.success).toBe(false)
+      expect(result.message).toBe('検索中にエラーが発生しました')
+      expect(result.timestamp).toBeDefined()
+      expect(result.path).toBe('/search')
     })
 
     it('should handle non-Error exceptions', async () => {

@@ -1,97 +1,251 @@
-import { describe, it, expect, vi } from 'vitest'
-import { generateEmbedding } from '../../../../src/routes/api/embeddings/generate'
-import type { GenerateEmbedding } from '../../../../src/schemas/embedding.schema'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { generateEmbeddingRoute, generateEmbeddingHandler } from '../../../../src/routes/api/embeddings/generate'
+import { setupEmbeddingsRouteTest } from '../../test-helpers'
+import { AppError, ErrorCodes } from '../../../../src/utils/error-handler'
 
-describe('generateEmbedding function', () => {
-  const mockAIEmbeddings = {
-    generateEmbedding: vi.fn()
-  }
+// Mock EmbeddingService
+const mockGenerateEmbedding = vi.fn()
+vi.mock('../../../../src/routes/api/embeddings/embedding-service', () => ({
+  EmbeddingService: vi.fn().mockImplementation(() => ({
+    generateEmbedding: mockGenerateEmbedding
+  }))
+}))
 
-  it('should generate embeddings successfully', async () => {
-    const mockResult = {
-      jobId: 'job-123',
-      workflowId: 'workflow-456',
-      status: 'processing'
-    }
+// Mock logger
+vi.mock('../../../../src/middleware/logging', () => ({
+  createLogger: vi.fn().mockReturnValue({
+    info: vi.fn(),
+    error: vi.fn()
+  })
+}))
+
+describe('Generate Embedding Route', () => {
+  let testSetup: ReturnType<typeof setupEmbeddingsRouteTest>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
     
-    mockAIEmbeddings.generateEmbedding.mockResolvedValue(mockResult)
-
-    const params: GenerateEmbedding = {
-      text: 'Test text for embedding',
-      model: '@cf/baai/bge-base-en-v1.5'
-    }
-
-    const result = await generateEmbedding(params, mockAIEmbeddings as any)
-
-    expect(mockAIEmbeddings.generateEmbedding).toHaveBeenCalledWith(
-      'Test text for embedding',
-      '@cf/baai/bge-base-en-v1.5'
-    )
-    expect(result).toEqual({
-      success: true,
-      data: mockResult,
-      message: 'テキストの処理を開始しました'
-    })
+    testSetup = setupEmbeddingsRouteTest()
+    testSetup.app.openapi(generateEmbeddingRoute, generateEmbeddingHandler)
   })
 
-  it('should generate embeddings with default model', async () => {
-    const mockResult = {
-      jobId: 'job-789',
-      workflowId: 'workflow-012',
-      status: 'processing'
-    }
-    
-    mockAIEmbeddings.generateEmbedding.mockResolvedValue(mockResult)
+  describe('POST /embeddings', () => {
+    it('should generate embeddings successfully', async () => {
+      const mockResult = {
+        workflowId: 'workflow-123',
+        status: 'queued' as const,
+        model: '@cf/baai/bge-base-en-v1.5',
+        startedAt: '2024-01-01T00:00:00Z'
+      }
+      
+      mockGenerateEmbedding.mockResolvedValue(mockResult)
 
-    const params: GenerateEmbedding = {
-      text: 'Test text without model'
-    }
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: 'Test text for embedding',
+          model: '@cf/baai/bge-base-en-v1.5'
+        })
+      }, testSetup.mockEnv)
 
-    const result = await generateEmbedding(params, mockAIEmbeddings as any)
+      expect(response.status).toBe(200)
+      
+      const result = await response.json()
+      expect(result).toEqual({
+        success: true,
+        data: mockResult,
+        message: 'テキストの処理を開始しました'
+      })
 
-    expect(mockAIEmbeddings.generateEmbedding).toHaveBeenCalledWith(
-      'Test text without model',
-      undefined
-    )
-    expect(result).toEqual({
-      success: true,
-      data: mockResult,
-      message: 'テキストの処理を開始しました'
+      expect(mockGenerateEmbedding).toHaveBeenCalledWith(
+        'Test text for embedding',
+        '@cf/baai/bge-base-en-v1.5'
+      )
     })
-  })
 
-  it('should handle empty text gracefully', async () => {
-    const mockResult = {
-      jobId: 'job-empty',
-      workflowId: 'workflow-empty',
-      status: 'processing'
-    }
-    
-    mockAIEmbeddings.generateEmbedding.mockResolvedValue(mockResult)
+    it('should generate embeddings without model (use default)', async () => {
+      const mockResult = {
+        workflowId: 'workflow-456',
+        status: 'queued' as const,
+        startedAt: '2024-01-01T00:00:00Z'
+      }
+      
+      mockGenerateEmbedding.mockResolvedValue(mockResult)
 
-    const params: GenerateEmbedding = {
-      text: ''
-    }
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: 'Test text without model'
+        })
+      }, testSetup.mockEnv)
 
-    const result = await generateEmbedding(params, mockAIEmbeddings as any)
-
-    expect(mockAIEmbeddings.generateEmbedding).toHaveBeenCalledWith('', undefined)
-    expect(result).toEqual({
-      success: true,
-      data: mockResult,
-      message: 'テキストの処理を開始しました'
+      expect(response.status).toBe(200)
+      expect(mockGenerateEmbedding).toHaveBeenCalledWith(
+        'Test text without model',
+        undefined
+      )
     })
-  })
 
-  it('should propagate errors from AIEmbeddings', async () => {
-    const mockError = new Error('AI service error')
-    mockAIEmbeddings.generateEmbedding.mockRejectedValue(mockError)
+    it('should reject empty text', async () => {
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: ''
+        })
+      }, testSetup.mockEnv)
 
-    const params: GenerateEmbedding = {
-      text: 'Test text'
-    }
+      expect(response.status).toBe(400)
+      
+      const result = await response.json()
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+    })
 
-    await expect(generateEmbedding(params, mockAIEmbeddings as any))
-      .rejects.toThrow('AI service error')
+    it('should reject whitespace-only text', async () => {
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: '   \n\t   '
+        })
+      }, testSetup.mockEnv)
+
+      expect(response.status).toBe(400)
+      
+      const result = await response.json()
+      expect(result.success).toBe(false)
+      expect(result.error).toBeDefined()
+    })
+
+    it('should handle missing text field', async () => {
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: '@cf/baai/bge-base-en-v1.5'
+        })
+      }, testSetup.mockEnv)
+
+      expect(response.status).toBe(400)
+    })
+
+    it('should handle AppError from EmbeddingService', async () => {
+      const appError = new AppError(
+        ErrorCodes.EMBEDDING_GENERATION_ERROR,
+        'AI service unavailable',
+        500
+      )
+      
+      mockGenerateEmbedding.mockRejectedValue(appError)
+
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: 'Test text'
+        })
+      }, testSetup.mockEnv)
+
+      expect(response.status).toBe(500)
+      
+      const result = await response.json()
+      expect(result).toEqual({
+        success: false,
+        error: 'EMBEDDING_GENERATION_ERROR',
+        message: 'AI service unavailable'
+      })
+    })
+
+    it('should handle unexpected errors', async () => {
+      mockGenerateEmbedding.mockRejectedValue(new Error('Unexpected error'))
+
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: 'Test text'
+        })
+      }, testSetup.mockEnv)
+
+      expect(response.status).toBe(500)
+      
+      const result = await response.json()
+      expect(result).toEqual({
+        success: false,
+        error: 'Internal Server Error',
+        message: 'Unexpected error'
+      })
+    })
+
+    it('should handle non-Error exceptions', async () => {
+      mockGenerateEmbedding.mockRejectedValue('String error')
+
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: 'Test text'
+        })
+      }, testSetup.mockEnv)
+
+      expect(response.status).toBe(500)
+      
+      const result = await response.json()
+      expect(result.message).toBe('埋め込み生成中にエラーが発生しました')
+    })
+
+    it('should handle invalid JSON', async () => {
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: 'invalid json'
+      }, testSetup.mockEnv)
+
+      expect(response.status).toBe(400)
+    })
+
+    it('should handle large text input', async () => {
+      const largeText = 'A'.repeat(10000)
+      const mockResult = {
+        workflowId: 'workflow-large',
+        status: 'queued' as const
+      }
+      
+      mockGenerateEmbedding.mockResolvedValue(mockResult)
+
+      const response = await testSetup.app.request('/embeddings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          text: largeText
+        })
+      }, testSetup.mockEnv)
+
+      expect(response.status).toBe(200)
+      expect(mockGenerateEmbedding).toHaveBeenCalledWith(largeText, undefined)
+    })
   })
 })

@@ -194,11 +194,10 @@ describe('Similar Search Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(404)
-      expect(result).toEqual({
-        success: false,
-        error: 'Not Found',
-        message: 'Vector not found'
-      })
+      expect(result.success).toBe(false)
+      expect(result.message).toContain('Vector not found')
+      expect(result.timestamp).toBeDefined()
+      expect(result.path).toBe('/search/similar')
     })
 
     it('should handle other errors', async () => {
@@ -215,11 +214,10 @@ describe('Similar Search Route', () => {
       const result = await response.json() as any
 
       expect(response.status).toBe(500)
-      expect(result).toEqual({
-        success: false,
-        error: 'Internal Server Error',
-        message: 'Search failed'
-      })
+      expect(result.success).toBe(false)
+      expect(result.message).toBe('類似検索中にエラーが発生しました')
+      expect(result.timestamp).toBeDefined()
+      expect(result.path).toBe('/search/similar')
     })
 
     it('should handle non-Error exceptions', async () => {

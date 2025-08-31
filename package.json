@@ -13,6 +13,8 @@
     "test:silentWatchCoverage": "vitest --coverage --no-file-parallelism 2>null",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "coverage:update": "bash update-coverage.sh",
+    "coverage:check": "grep -A 30 '% Stmts' coverage-raw.txt | head -15",
     "lint": "eslint src --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write \"src/**/*.{ts,tsx,json}\"",

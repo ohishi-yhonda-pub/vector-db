@@ -107,6 +107,19 @@
 - シンプルで明確な構造
 - 大きな変更は不要
 
+## 進捗記録
+
+### 📝 重要: 実施進捗の記録
+**リファクタリング作業の進捗は `SOURCE_REFACTORING_TRACKER.md` に記録すること**
+
+- 各フェーズの開始・完了日時
+- 実施した具体的な変更内容
+- 発生した問題と解決方法
+- パフォーマンス測定結果
+- テスト実行結果
+
+詳細な作業履歴を残すことで、問題発生時のロールバックや今後の改善に活用する。
+
 ## リファクタリング実施計画
 
 ### Phase 1: 共通基盤の構築（1週間）
@@ -187,6 +200,48 @@
 - [ ] 新機能追加の容易さ
 - [ ] エラーハンドリングの一貫性
 - [ ] チーム開発での理解しやすさ
+
+## ⚠️ 重要な注意事項（リファクタリング時の落とし穴）
+
+### Zodスキーマ定義の注意点
+
+#### 1. z.record()の正しい使い方
+```typescript
+// ❌ 間違い - これはzod v4で動作しない
+filter: z.record(z.any())
+
+// ✅ 正しい - キーの型を必ず指定する
+filter: z.record(z.string(), z.any())
+```
+
+#### 2. @hono/zod-openapi と zod の使い分け
+```typescript
+// ❌ 間違い - Honoプロジェクトで純粋なzodを使う
+import { z } from 'zod'
+
+// ✅ 正しい - Honoプロジェクトでは@hono/zod-openapiを使う
+import { z } from '@hono/zod-openapi'
+```
+
+#### 3. テストでのスキーマ再定義を避ける
+```typescript
+// ❌ 間違い - テストで同じスキーマを再定義
+const TestSchema = z.object({
+  query: z.string().min(1),
+  // ...
+})
+
+// ✅ 正しい - 本体から直接インポート
+import { TextSearchParamsSchema } from './search-validator'
+```
+
+### よくあるエラーと解決方法
+
+| エラー | 原因 | 解決方法 |
+|--------|------|----------|
+| `Cannot read properties of undefined (reading '_zod')` | zodバージョン競合 | @hono/zod-openapiを使用 |
+| `z.record() validation failed` | キー型未指定 | `z.record(z.string(), z.any())` |
+| `Schema validation mismatch in tests` | テストでの再定義 | 本体スキーマを直接使用 |
 
 ## リスクと対策
 
