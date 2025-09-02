@@ -1,102 +1,154 @@
+/**
+ * Vector DB - OpenAPI enabled API
+ * 
+ * A clean, simple vector database API built on Cloudflare Workers
+ * with OpenAPI documentation and Swagger UI
+ */
+
 import { OpenAPIHono } from '@hono/zod-openapi'
-import { cors } from "hono/cors"
-import { logger } from "hono/logger"
 import { swaggerUI } from '@hono/swagger-ui'
-import vectorRoutes from './routes/api/vectors/index'
-import searchRoutes from './routes/api/search/index'
-import embeddingsRoutes from './routes/api/embeddings/index'
-import fileRoutes from './routes/api/files/index'
-import notionRoutes from './routes/api/notion/index'
+import { cors } from 'hono/cors'
+import { generateEmbedding, batchEmbedding } from './embeddings'
+import { createVector, getVector, deleteVector, searchVectors, batchCreateVectors, listVectors, deleteAllVectors } from './vectors'
+import {
+  healthRoute,
+  embeddingRoute,
+  batchEmbeddingRoute,
+  createVectorRoute,
+  getVectorRoute,
+  deleteVectorRoute,
+  batchCreateVectorRoute,
+  searchRoute,
+  listVectorsRoute,
+  deleteAllVectorsRoute
+} from './routes'
 
-const app = new OpenAPIHono<{ Bindings: Env }>()
-// ミドルウェア
-app.use("*", logger())
-app.use("*", cors())
-
-// ヘルスチェックエンドポイント
-app.get("/health", (c) => {
-  return c.json({
-    status: "ok",
-    timestamp: new Date().toISOString(),
-    environment: c.env.ENVIRONMENT || "production"
-  })
-})
-
-// ルートエンドポイント
-app.get("/", (c) => {
-  return c.json({
-    message: "Vector Database API",
-    version: "1.0.0",
-    endpoints: {
-      health: "/health",
-      vectors: "/api/vectors",
-      search: "/api/search",
-      embeddings: "/api/embeddings",
-      files: "/api/files"
+// Create OpenAPI Hono app with custom validation error handling
+const app = new OpenAPIHono<{ Bindings: Env }>({
+  defaultHook: (result, c) => {
+    if (!result.success) {
+      // Handle validation errors consistently
+      const firstError = result.error.issues[0]
+      return c.json(
+        { 
+          success: false, 
+          error: `Invalid request: ${firstError.message}` 
+        }, 
+        400
+      )
     }
+  }
+})
+
+// ============= Middleware =============
+
+// CORS
+app.use('*', cors())
+
+// Authentication
+app.use('/api/*', async (c, next) => {
+  // Skip auth in development
+  if (c.env.ENVIRONMENT === 'development') {
+    return next()
+  }
+  
+  const apiKey = c.req.header('X-API-Key') || c.req.header('Authorization')?.replace('Bearer ', '')
+  if (apiKey !== c.env.API_KEY) {
+    return c.json({ success: false, error: 'Unauthorized' }, 401)
+  }
+  
+  await next()
+})
+
+// Request logging
+app.use('*', async (c, next) => {
+  const start = Date.now()
+  await next()
+  const duration = Date.now() - start
+  console.log(`${c.req.method} ${c.req.path} - ${c.res.status} (${duration}ms)`)
+})
+
+// ============= OpenAPI Routes =============
+
+// Health check
+app.openapi(healthRoute, (c) => {
+  return c.json({ 
+    status: 'ok', 
+    service: 'Vector DB',
+    version: '2.0.0',
+    endpoints: [
+      'POST /api/embeddings',
+      'POST /api/embeddings/batch',
+      'POST /api/vectors',
+      'GET /api/vectors',
+      'GET /api/vectors/:id',
+      'DELETE /api/vectors/:id',
+      'POST /api/vectors/batch',
+      'POST /api/search',
+      'DELETE /api/vectors/all'
+    ]
   })
 })
 
-// OpenAPIドキュメント設定
+// Embedding endpoints
+app.openapi(embeddingRoute, generateEmbedding)
+app.openapi(batchEmbeddingRoute, batchEmbedding)
+
+// Vector CRUD endpoints  
+app.openapi(createVectorRoute, createVector)
+app.openapi(batchCreateVectorRoute, batchCreateVectors)
+
+// List vectors endpoint (before parameterized routes)
+app.openapi(listVectorsRoute, listVectors)
+
+// Delete all vectors endpoint (before parameterized routes)
+app.openapi(deleteAllVectorsRoute, deleteAllVectors)
+
+// Parameterized routes (must come after specific paths)
+app.openapi(getVectorRoute, (c) => getVector(c, c.req.param('id')))
+app.openapi(deleteVectorRoute, (c) => deleteVector(c, c.req.param('id')))
+
+// Search endpoint
+app.openapi(searchRoute, searchVectors)
+
+// ============= Documentation Routes =============
+
+// Swagger UI at /doc
+app.get('/doc', swaggerUI({ url: '/specification' }))
+
+// OpenAPI specification at /specification
 app.doc('/specification', (c) => ({
-  openapi: '3.0.0',
   info: {
-    version: '1.0.0',
-    title: 'Vector Database API',
-    description: 'Cloudflare Vectorize と Workers AI を使用したベクトルデータベースAPI'
+    title: 'Vector DB API',
+    version: '2.0.0',
+    description: 'A simple vector database API built on Cloudflare Workers with Vectorize and Workers AI'
   },
   servers: [
     {
-      url: 'http://localhost:8787',
-      description: 'Local development server'
+      url: 'https://vector-db.m-tama-ramu.workers.dev',
+      description: 'Production server'
     },
     {
-      url: c.req.url.replace(/\/specification.*$/, ''),
-      description: 'Current server'
+      url: 'http://localhost:8787', 
+      description: 'Development server'
     }
-  ]
+  ],
+  openapi: '3.0.0'
 }))
 
-// Swagger UI
-app.get('/doc', swaggerUI({ url: '/specification' }))
+// ============= Error Handlers =============
 
-// APIルートの登録
-const api = new OpenAPIHono<{ Bindings: Env }>()
-
-// ルートを登録
-vectorRoutes(api)
-searchRoutes(api)
-embeddingsRoutes(api)
-fileRoutes(api)
-notionRoutes(api)
-
-app.route('/api', api)
-
-// 404ハンドラー
+// 404 handler
 app.notFound((c) => {
-  return c.json({
-    error: "Not Found",
-    message: "The requested endpoint does not exist"
-  }, 404)
+  return c.json({ success: false, error: 'Not found' }, 404)
 })
 
-// エラーハンドラー
+// Error handler
 app.onError((err, c) => {
-  console.error(`Error: ${err.message}`, err)
-  return c.json({
-    error: "Internal Server Error",
-    message: err.message
-  }, 500)
+  console.error('Unhandled error:', err)
+  return c.json({ success: false, error: 'Internal server error' }, 500)
 })
 
-
-// Durable Objectsをエクスポート
-export { VectorManager, AIEmbeddings, NotionManager } from './durable-objects'
-// Workflowsをエクスポート
-export { EmbeddingsWorkflow } from './workflows/embeddings'
-export { BatchEmbeddingsWorkflow } from './workflows/batch-embeddings'
-export { VectorOperationsWorkflow } from './workflows/vector-operations'
-export { FileProcessingWorkflow } from './workflows/file-processing'
-export { NotionSyncWorkflow } from './workflows/notion-sync'
+// ============= Export =============
 
 export default app
