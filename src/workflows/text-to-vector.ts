@@ -42,14 +42,15 @@ export class TextToVectorWorkflow extends WorkflowEntrypoint<Env, TextToVectorIn
       return id || generateVectorId()
     })
 
-    // Step 3: Store vector in Vectorize using shared utility
+    // Step 3: Store vector in Vectorize using shared utility (with text in metadata)
     await step.do('store-in-vectorize', async () => {
-      await storeInVectorize(this.env.VECTORIZE_INDEX, vectorId, embedding, metadata)
+      await storeInVectorize(this.env.VECTORIZE_INDEX, vectorId, embedding, metadata, text)
     })
 
-    // Step 4: Store metadata in D1 using shared utility
+    // Step 4: Store metadata in D1 using shared utility (with text in metadata)
     await step.do('store-in-d1', async () => {
-      await storeVectorMetadata(this.env.DB, vectorId, embedding.length, metadata)
+      const enrichedMetadata = { ...metadata, text }
+      await storeVectorMetadata(this.env.DB, vectorId, embedding.length, enrichedMetadata)
     })
 
     // Return success result

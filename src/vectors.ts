@@ -143,10 +143,16 @@ export const searchVectors = async (c: any) => {
       filter: parsed.filter
     })
     
+    // Extract text from metadata if available
+    const matchesWithText = results.matches.map((match: any) => ({
+      ...match,
+      text: match.metadata?.text || null
+    }))
+    
     return c.json({
       success: true,
       data: {
-        matches: results.matches,
+        matches: matchesWithText,
         count: results.count
       }
     })

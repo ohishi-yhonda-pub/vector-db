@@ -181,7 +181,11 @@ export const SearchResponseSchema = z.object({
     matches: z.array(z.object({
       id: z.string().openapi({ example: 'vec_123' }),
       score: z.number().openapi({ example: 0.95 }),
-      metadata: z.record(z.string(), z.any()).openapi({ example: {} })
+      metadata: z.record(z.string(), z.any()).openapi({ example: {} }),
+      text: z.string().nullable().optional().openapi({ 
+        description: 'Original text (if stored in metadata)',
+        example: 'This is the original text that was vectorized'
+      })
     })).openapi({
       description: 'Search result matches'
     }),

@@ -37,12 +37,18 @@ export async function storeInVectorize(
   vectorizeIndex: any,
   id: string,
   values: number[],
-  metadata?: Record<string, any>
+  metadata?: Record<string, any>,
+  text?: string
 ): Promise<void> {
+  // Include text in metadata if provided
+  const enrichedMetadata = text 
+    ? { ...metadata, text }
+    : metadata || {}
+    
   await vectorizeIndex.insert([{
     id,
     values,
-    metadata: metadata || {}
+    metadata: enrichedMetadata
   }])
 }
 
@@ -86,11 +92,12 @@ export async function createVectorFromTextComplete(
   // Generate or use provided ID
   const id = customId || generateVectorId()
   
-  // Store in Vectorize
-  await storeInVectorize(env.VECTORIZE_INDEX, id, embedding, metadata)
+  // Store in Vectorize with text included in metadata
+  await storeInVectorize(env.VECTORIZE_INDEX, id, embedding, metadata, text)
   
-  // Store metadata in D1
-  await storeVectorMetadata(env.DB, id, embedding.length, metadata)
+  // Store metadata in D1 (text is already in metadata)
+  const enrichedMetadata = { ...metadata, text }
+  await storeVectorMetadata(env.DB, id, embedding.length, enrichedMetadata)
   
   return { id, embedding }
 }
