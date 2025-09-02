@@ -8,6 +8,7 @@ export default defineWorkersProject(async () => {
     test: {
       globals: true,
       setupFiles: ['./tests/apply-migrations.ts'],
+      exclude: ['**/tests_backup/**', '**/node_modules/**', '**/dist/**'],
       silent: false,
       reporters: ['basic'],
       testTimeout: 30000,

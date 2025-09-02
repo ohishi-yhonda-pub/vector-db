@@ -11,7 +11,14 @@
       "Bash(cat:*)",
       "Bash(git checkout:*)",
       "Bash(git add:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(yarn vitest run:*)",
+      "Bash(npm test)",
+      "Bash(yarn types)",
+      "Bash(npm run typecheck:*)",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "Bash(yarn typecheck)",
+      "Bash(yarn lint)"
     ],
     "deny": [],
     "ask": []

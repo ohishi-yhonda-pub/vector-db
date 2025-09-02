@@ -19,66 +19,6 @@
   "ai": {
     "binding": "AI"
   },
-  // Durable Objects設定
-  "durable_objects": {
-    "bindings": [
-      {
-        "name": "VECTOR_CACHE",
-        "class_name": "VectorManager"
-      },
-      {
-        "name": "VECTOR_MANAGER",
-        "class_name": "VectorManager"
-      },
-      {
-        "name": "AI_EMBEDDINGS",
-        "class_name": "AIEmbeddings"
-      },
-      {
-        "name": "NOTION_MANAGER",
-        "class_name": "NotionManager"
-      }
-    ]
-  },
-  // Durable Objects Migrations
-  "migrations": [
-    {
-      "tag": "v3",
-      "new_sqlite_classes": [
-        "VectorManager",
-        "AIEmbeddings",
-        "NotionManager"
-      ]
-    }
-  ],
-  // Workflows設定
-  "workflows": [
-    {
-      "binding": "EMBEDDINGS_WORKFLOW",
-      "name": "embeddings-workflow",
-      "class_name": "EmbeddingsWorkflow"
-    },
-    {
-      "binding": "BATCH_EMBEDDINGS_WORKFLOW",
-      "name": "batch-embeddings-workflow",
-      "class_name": "BatchEmbeddingsWorkflow"
-    },
-    {
-      "binding": "VECTOR_OPERATIONS_WORKFLOW",
-      "name": "vector-operations-workflow",
-      "class_name": "VectorOperationsWorkflow"
-    },
-    {
-      "binding": "FILE_PROCESSING_WORKFLOW",
-      "name": "file-processing-workflow",
-      "class_name": "FileProcessingWorkflow"
-    },
-    {
-      "binding": "NOTION_SYNC_WORKFLOW",
-      "name": "notion-sync-workflow",
-      "class_name": "NotionSyncWorkflow"
-    }
-  ],
   // D1データベース設定
   "d1_databases": [
     {
@@ -91,11 +31,7 @@
   "vars": {
     "ENVIRONMENT": "development",
     "DEFAULT_EMBEDDING_MODEL": "@cf/baai/bge-base-en-v1.5",
-    "DEFAULT_TEXT_GENERATION_MODEL": "@cf/google/gemma-3-12b-it",
-    "IMAGE_ANALYSIS_PROMPT": "Describe this image in detail. Include any text visible in the image.",
-    "IMAGE_ANALYSIS_MAX_TOKENS": "512",
-    "TEXT_EXTRACTION_MAX_TOKENS": "1024",
-    "NOTION_API_KEY": ""
+    "API_KEY": ""
   },
   // ローカル開発設定
   "dev": {

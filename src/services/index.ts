@@ -1,1 +1,0 @@
-export { VectorizeService } from './vectorize.service'
