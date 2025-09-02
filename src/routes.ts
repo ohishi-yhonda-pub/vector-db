@@ -452,6 +452,75 @@ export const listVectorsRoute = createRoute({
   }
 })
 
+// ============= Text to Vector Route (using Workflow) =============
+
+export const textToVectorRoute = createRoute({
+  method: 'post',
+  path: '/api/vectors/from-text',
+  tags: ['Vectors'],
+  summary: 'Create vector from text',
+  description: 'Generate embedding from text and store as vector using Cloudflare Workflow',
+  request: {
+    body: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            text: z.string().min(1).openapi({
+              description: 'Text to convert to vector',
+              example: 'Hello world'
+            }),
+            id: z.string().optional().openapi({
+              description: 'Custom vector ID (optional)',
+              example: 'my-vector-1'
+            }),
+            metadata: z.record(z.string(), z.any()).optional().openapi({
+              description: 'Optional metadata',
+              example: { category: 'greeting', language: 'en' }
+            })
+          }).openapi({
+            title: 'TextToVectorRequest',
+            description: 'Request to create vector from text'
+          })
+        }
+      }
+    }
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              vectorId: z.string(),
+              workflowId: z.string(),
+              status: z.string()
+            }),
+            message: z.string()
+          })
+        }
+      },
+      description: 'Workflow started successfully'
+    },
+    400: {
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema
+        }
+      },
+      description: 'Invalid request'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema
+        }
+      },
+      description: 'Internal server error'
+    }
+  }
+})
+
 // ============= Delete All Vectors Route =============
 
 export const deleteAllVectorsRoute = createRoute({

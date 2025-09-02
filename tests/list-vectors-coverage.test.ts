@@ -75,6 +75,7 @@ describe('List Vectors Coverage Tests', () => {
         ENVIRONMENT: 'development' as const,
         DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5' as const,
         API_KEY: '' as const,
+        TEXT_TO_VECTOR_WORKFLOW: {} as any,
         VECTORIZE_INDEX: {} as any,
         AI: {} as any,
         DB: {
@@ -96,6 +97,7 @@ describe('List Vectors Coverage Tests', () => {
         ENVIRONMENT: 'development' as const,
         DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5' as const,
         API_KEY: '' as const,
+        TEXT_TO_VECTOR_WORKFLOW: {} as any,
         VECTORIZE_INDEX: {} as any,
         AI: {} as any,
         DB: {
