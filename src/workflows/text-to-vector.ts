@@ -60,3 +60,5 @@ export class TextToVectorWorkflow extends WorkflowEntrypoint<Env, TextToVectorIn
     }
   }
 }
+
+export default TextToVectorWorkflow

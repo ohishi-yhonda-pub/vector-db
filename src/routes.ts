@@ -521,6 +521,91 @@ export const textToVectorRoute = createRoute({
   }
 })
 
+// ============= Workflow List Route =============
+
+export const workflowListRoute = createRoute({
+  method: 'get',
+  path: '/api/workflows',
+  tags: ['Workflow'],
+  summary: 'List all workflows',
+  description: 'Get a list of all text-to-vector workflow instances',
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              workflows: z.array(z.any()),
+              total: z.number()
+            })
+          })
+        }
+      },
+      description: 'Workflow list retrieved successfully'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema
+        }
+      },
+      description: 'Internal server error'
+    }
+  }
+})
+
+// ============= Workflow Status Route =============
+
+export const workflowStatusRoute = createRoute({
+  method: 'get',
+  path: '/api/workflow/{workflowId}/status',
+  tags: ['Workflow'],
+  summary: 'Get workflow status',
+  description: 'Get the status of a text-to-vector workflow by ID',
+  request: {
+    params: z.object({
+      workflowId: z.string().openapi({
+        description: 'Workflow ID',
+        example: 'wf_123456789'
+      })
+    })
+  },
+  responses: {
+    200: {
+      content: {
+        'application/json': {
+          schema: z.object({
+            success: z.boolean(),
+            data: z.object({
+              workflowId: z.string(),
+              status: z.string(),
+              output: z.any().optional()
+            })
+          })
+        }
+      },
+      description: 'Workflow status retrieved successfully'
+    },
+    404: {
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema
+        }
+      },
+      description: 'Workflow not found'
+    },
+    500: {
+      content: {
+        'application/json': {
+          schema: ErrorResponseSchema
+        }
+      },
+      description: 'Internal server error'
+    }
+  }
+})
+
 // ============= Delete All Vectors Route =============
 
 export const deleteAllVectorsRoute = createRoute({
