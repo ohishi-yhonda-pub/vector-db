@@ -21,9 +21,11 @@ import {
   searchRoute,
   listVectorsRoute,
   deleteAllVectorsRoute,
-  textToVectorRoute
+  textToVectorRoute,
+  workflowListRoute,
+  workflowStatusRoute
 } from './routes'
-import { createVectorFromText } from './handlers/text-to-vector'
+import { createVectorFromText, listWorkflows, getWorkflowStatus } from './handlers/text-to-vector'
 
 // Create OpenAPI Hono app with custom validation error handling
 const app = new OpenAPIHono<{ Bindings: Env }>({
@@ -86,6 +88,9 @@ app.openapi(healthRoute, (c) => {
       'GET /api/vectors/:id',
       'DELETE /api/vectors/:id',
       'POST /api/vectors/batch',
+      'POST /api/vectors/from-text',
+      'GET /api/workflows',
+      'GET /api/workflow/:workflowId/status',
       'POST /api/search',
       'DELETE /api/vectors/all'
     ]
@@ -108,6 +113,10 @@ app.openapi(deleteAllVectorsRoute, deleteAllVectors)
 
 // Text to vector endpoint (using Workflow)
 app.openapi(textToVectorRoute, createVectorFromText)
+
+// Workflow management endpoints
+app.openapi(workflowListRoute, listWorkflows)
+app.openapi(workflowStatusRoute, (c) => getWorkflowStatus(c))
 
 // Parameterized routes (must come after specific paths)
 app.openapi(getVectorRoute, (c) => getVector(c, c.req.param('id')))
@@ -155,5 +164,8 @@ app.onError((err, c) => {
 })
 
 // ============= Export =============
+
+// Export the workflow for Cloudflare
+export { default as TextToVectorWorkflow } from './workflows/text-to-vector'
 
 export default app

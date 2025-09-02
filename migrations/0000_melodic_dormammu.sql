@@ -1,4 +1,4 @@
-CREATE TABLE `vectors` (
+CREATE TABLE IF NOT EXISTS `vectors` (
 	`id` text PRIMARY KEY NOT NULL,
 	`dimensions` integer NOT NULL,
 	`metadata` text,

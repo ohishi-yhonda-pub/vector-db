@@ -8,6 +8,36 @@ import app from '../src/index'
 import { createVectorFromText, getWorkflowStatus } from '../src/handlers/text-to-vector'
 import { TextToVectorWorkflow } from '../src/workflows/text-to-vector'
 
+// Mock the db module
+vi.mock('../src/db', () => ({
+  createDbClient: vi.fn(() => ({
+    insert: vi.fn(() => ({
+      values: vi.fn().mockResolvedValue(true)
+    })),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({
+        orderBy: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            offset: vi.fn().mockResolvedValue([])
+          }))
+        }))
+      }))
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn(() => ({
+        where: vi.fn().mockResolvedValue(true)
+      }))
+    }))
+  })),
+  workflows: {}
+}))
+
+// Mock drizzle-orm
+vi.mock('drizzle-orm', () => ({
+  eq: vi.fn((field, value) => ({ field, value })),
+  desc: vi.fn((field) => ({ field, desc: true }))
+}))
+
 describe('Text to Vector Handler', () => {
   describe('createVectorFromText', () => {
     it('should handle valid request with custom ID', async () => {
@@ -20,6 +50,7 @@ describe('Text to Vector Handler', () => {
           })
         },
         env: {
+          DB: {},
           TEXT_TO_VECTOR_WORKFLOW: {
             create: vi.fn().mockResolvedValue({
               id: 'workflow-123'
@@ -50,6 +81,7 @@ describe('Text to Vector Handler', () => {
           })
         },
         env: {
+          DB: {},
           TEXT_TO_VECTOR_WORKFLOW: {
             create: vi.fn().mockResolvedValue({
               id: 'workflow-456'
@@ -210,6 +242,7 @@ describe('Text to Vector Handler', () => {
           param: vi.fn().mockReturnValue('workflow-123')
         },
         env: {
+          DB: {},
           TEXT_TO_VECTOR_WORKFLOW: {
             get: vi.fn().mockResolvedValue({
               status: vi.fn().mockResolvedValue({
