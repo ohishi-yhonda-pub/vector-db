@@ -27,6 +27,15 @@
       "database_id": "4ebdd59e-bf1e-47df-b830-9b3a69bafdf4"
     }
   ],
+  // Workflows設定
+  "workflows": [
+    {
+      "name": "text-to-vector",
+      "binding": "TEXT_TO_VECTOR_WORKFLOW",
+      "class_name": "TextToVectorWorkflow",
+      "script_name": "src/workflows/text-to-vector"
+    }
+  ],
   // 環境変数
   "vars": {
     "ENVIRONMENT": "development",

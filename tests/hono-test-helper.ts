@@ -13,6 +13,7 @@ export function createMockEnv(): Env {
     ENVIRONMENT: 'development',
     DEFAULT_EMBEDDING_MODEL: '@cf/baai/bge-base-en-v1.5',
     API_KEY: '',
+    TEXT_TO_VECTOR_WORKFLOW: {} as any,
     VECTORIZE_INDEX: {
       insert: async (vectors: any[]) => ({ count: vectors.length }),
       getByIds: async (ids: string[]) => ids.map(id => ({

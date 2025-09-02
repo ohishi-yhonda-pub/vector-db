@@ -4,7 +4,7 @@
 
 import { z } from '@hono/zod-openapi'
 import { CreateVectorSchema, SearchSchema, DeleteAllVectorsRequestSchema, ListVectorsRequestSchema } from './schemas'
-import { createDbClient, vectors } from './db'
+import { createDbClient, vectors, type Vector } from './db'
 import { eq, inArray, count, desc } from 'drizzle-orm'
 
 /**
@@ -219,6 +219,33 @@ export const batchCreateVectors = async (c: any) => {
 
 
 /**
+ * Query vectors from database (extracted for testing)
+ */
+export const queryVectorsList = async (db: any, limit: number, offset: number) => {
+  // Get total count
+  const [totalResult] = await db.select({ count: count() }).from(vectors)
+  const total = totalResult?.count || 0
+  
+  // Get paginated results
+  const vectorsList = await db.select()
+    .from(vectors)
+    .limit(limit)
+    .offset(offset)
+    .orderBy(desc(vectors.createdAt))
+  
+  // Map the vectors to the response format
+  const mappedVectors = vectorsList.map((v: Vector) => ({
+    id: v.id,
+    dimensions: v.dimensions,
+    metadata: v.metadata,
+    createdAt: v.createdAt.toISOString(),
+    updatedAt: v.updatedAt.toISOString()
+  }))
+  
+  return { total, vectors: mappedVectors }
+}
+
+/**
  * List vectors with pagination from D1 database
  */
 export const listVectors = async (c: any) => {
@@ -228,27 +255,13 @@ export const listVectors = async (c: any) => {
     
     const db = createDbClient(c.env.DB)
     
-    // Get total count
-    const [totalResult] = await db.select({ count: count() }).from(vectors)
-    const total = totalResult?.count || 0
-    
-    // Get paginated results
-    const vectorsList = await db.select()
-      .from(vectors)
-      .limit(parsed.limit)
-      .offset(parsed.offset)
-      .orderBy(desc(vectors.createdAt))
+    // Use extracted function that now includes mapping
+    const { total, vectors } = await queryVectorsList(db, parsed.limit, parsed.offset)
     
     return c.json({
       success: true,
       data: {
-        vectors: vectorsList.map(v => ({
-          id: v.id,
-          dimensions: v.dimensions,
-          metadata: v.metadata,
-          createdAt: v.createdAt.toISOString(),
-          updatedAt: v.updatedAt.toISOString()
-        })),
+        vectors,
         total,
         limit: parsed.limit,
         offset: parsed.offset

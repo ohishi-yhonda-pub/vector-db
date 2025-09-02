@@ -20,8 +20,10 @@ import {
   batchCreateVectorRoute,
   searchRoute,
   listVectorsRoute,
-  deleteAllVectorsRoute
+  deleteAllVectorsRoute,
+  textToVectorRoute
 } from './routes'
+import { createVectorFromText } from './handlers/text-to-vector'
 
 // Create OpenAPI Hono app with custom validation error handling
 const app = new OpenAPIHono<{ Bindings: Env }>({
@@ -103,6 +105,9 @@ app.openapi(listVectorsRoute, listVectors)
 
 // Delete all vectors endpoint (before parameterized routes)
 app.openapi(deleteAllVectorsRoute, deleteAllVectors)
+
+// Text to vector endpoint (using Workflow)
+app.openapi(textToVectorRoute, createVectorFromText)
 
 // Parameterized routes (must come after specific paths)
 app.openapi(getVectorRoute, (c) => getVector(c, c.req.param('id')))
