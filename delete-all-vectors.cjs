@@ -24,7 +24,9 @@ async function deleteAllVectors() {
       
       // wrangler vectorize delete-vectors コマンドを実行
       console.log('Deleting vectors...');
-      const deleteCommand = `npx wrangler vectorize delete-vectors vector-db-index --ids ${idsJson}`;
+      // IDsを個別の引数として渡す
+      const idsString = ids.join(' ');
+      const deleteCommand = `npx wrangler vectorize delete-vectors vector-db-index --ids ${idsString}`;
       
       try {
         const { stdout: deleteOutput } = await execPromise(deleteCommand);
